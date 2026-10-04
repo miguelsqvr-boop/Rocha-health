@@ -135,6 +135,8 @@ src/app/m/[memberId]/  a person's health profile (My Health)
 
 ## Not done yet
 
+See `docs/HANDOFF.md` for the current status, the decisions behind the design and the full list of gaps. In short:
+
 - Wearable integrations: the data model, permissions and private token storage exist, but no provider sync is connected yet.
 - Granular sharing UI (view-only, upload-only, temporary, doctor/caregiver): supported by the database, not exposed.
 - Notification delivery beyond the in-app list (email or push).

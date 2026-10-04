@@ -12,6 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 This app holds a family's medical records. The access model is the product.
 Read the "Privacy & access model" section of README.md before changing data access.
+Current status, decisions and next steps are in `docs/HANDOFF.md`.
 
 - **The database enforces access, not the UI.** Every health table has `family_id` + `member_id`, a composite foreign key to `family_members(family_id, id)`, RLS enabled, and policies that go through `app.member_ids_with('read' | 'upload' | 'write')`. A new health table must follow the same pattern and get tests in `supabase/tests/`.
 - **Never use the service-role key for health data.** All reads and writes run with the signed-in user's Supabase client (`createSupabaseServerClient`). The only service-role use is sending invitation emails (`src/lib/supabase/admin.ts`).
