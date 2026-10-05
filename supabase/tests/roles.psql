@@ -1,0 +1,12 @@
+-- psql shortcuts: `:as_santi` makes the following statements run as Santi,
+-- exactly as PostgREST would with his JWT. `:as_system` returns to the
+-- migration owner (bypasses RLS) for setup and inspection.
+\set as_miguel 'reset role; do $$ begin perform tests.as_user(''miguel''); end $$; set role authenticated;'
+\set as_santi 'reset role; do $$ begin perform tests.as_user(''santi''); end $$; set role authenticated;'
+\set as_gui 'reset role; do $$ begin perform tests.as_user(''gui''); end $$; set role authenticated;'
+\set as_ben 'reset role; do $$ begin perform tests.as_user(''ben''); end $$; set role authenticated;'
+\set as_outsider 'reset role; do $$ begin perform tests.as_user(''outsider''); end $$; set role authenticated;'
+\set as_doctor 'reset role; do $$ begin perform tests.as_user(''doctor''); end $$; set role authenticated;'
+\set as_stranger 'reset role; do $$ begin perform tests.as_user(''stranger''); end $$; set role authenticated;'
+\set as_anon 'reset role; do $$ begin perform set_config(''request.jwt.claims'', ''{"role":"anon"}'', false); end $$; set role anon;'
+\set as_system 'reset role; do $$ begin perform set_config(''request.jwt.claims'', '''', false); end $$;'

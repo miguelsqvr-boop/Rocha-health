@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+/* Design tokens. Light and dark are each chosen, not inverted. */
+:root {
+  color-scheme: light;
+  --bg: #f4f4f1;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e2e1dc;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #7c7b76;
+  --accent: #1c5cab;
+  --accent-fg: #ffffff;
+  --accent-soft: #e6effb;
+  --series-1: #2a78d6;
+  --band: #e9f1e6;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good-ink: #0a6e0a;
+  --serious-ink: #a8461c;
+  --critical-ink: #b02a2a;
+  --warning-ink: #8a5a00;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --surface-2: #24241f;
+    --border: #34342f;
+    --text: #ffffff;
+    --text-2: #c3c2b7;
+    --muted: #96958c;
+    --accent: #3987e5;
+    --accent-fg: #0b0b0b;
+    --accent-soft: #1c2a3c;
+    --series-1: #3987e5;
+    --band: #1f2b1d;
+    --good-ink: #4fd04f;
+    --serious-ink: #f2a07f;
+    --critical-ink: #ef8080;
+    --warning-ink: #fac45a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211;
+  --surface: #1a1a19;
+  --surface-2: #24241f;
+  --border: #34342f;
+  --text: #ffffff;
+  --text-2: #c3c2b7;
+  --muted: #96958c;
+  --accent: #3987e5;
+  --accent-fg: #0b0b0b;
+  --accent-soft: #1c2a3c;
+  --series-1: #3987e5;
+  --band: #1f2b1d;
+  --good-ink: #4fd04f;
+  --serious-ink: #f2a07f;
+  --critical-ink: #ef8080;
+  --warning-ink: #fac45a;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-serious: var(--serious);
+  --color-critical: var(--critical);
+  --color-good-ink: var(--good-ink);
+  --color-serious-ink: var(--serious-ink);
+  --color-critical-ink: var(--critical-ink);
+  --color-warning-ink: var(--warning-ink);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+}
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.tabular { font-variant-numeric: tabular-nums; }
