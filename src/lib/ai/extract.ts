@@ -4,6 +4,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod/v4";
 import { DOCUMENT_TYPE_CODES, DOCUMENT_TYPES } from "@/lib/domain/taxonomy";
 import type { BiomarkerDefinition } from "@/lib/domain/biomarkers";
+import { env } from "@/lib/env";
 
 export const EXTRACTION_MODEL = "claude-opus-5-5";
 
@@ -66,6 +67,10 @@ export async function extractDocument(input: {
   filename: string;
   biomarkers: BiomarkerDefinition[];
 }): Promise<Extraction> {
+  // The SDK constructor throws a generic error without a key; say what is wrong.
+  if (!env.anthropicConfigured()) {
+    throw new ExtractionError("Document reading isn't set up yet (the Anthropic API key is missing).");
+  }
   const client = new Anthropic();
   const data = Buffer.from(input.bytes).toString("base64");
   const source =

@@ -35,7 +35,14 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
               <ActionButton method="POST" url={`/api/documents/${doc.id}/process`} variant="primary">Read and identify now</ActionButton>
             </div>
           ) : (
-            <ReviewPanel review={review} donePath="/admin/documents?view=review" />
+            <>
+              {doc.status === "failed" && (
+                <div className="mb-4">
+                  <ActionButton method="POST" url={`/api/documents/${doc.id}/process`}>Try reading it again</ActionButton>
+                </div>
+              )}
+              <ReviewPanel review={review} donePath="/admin/documents?view=review" />
+            </>
           )}
         </Card>
       </>
