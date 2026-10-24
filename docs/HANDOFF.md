@@ -6,7 +6,7 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 
 ## Status
 
-- All work is on branch `claude/family-access-model`, in pull request #1 into `main`. CI is green (typecheck, unit tests, build, database access tests).
+- The first build was merged into `main` (pull request #1, 5 Oct 2026). CI is green (typecheck, unit tests, build, database access tests).
 - **Not deployed anywhere yet.** No Supabase project or Vercel site exists. Next step: set them up (see *Next steps*).
 - The original brief was the "Family access, Super Admin & privacy model" spec: Super Admin (Miguel) manages the family; every member (Santi, Gui, Ben, Alice) has a private account that only sees their own records.
 
@@ -14,7 +14,7 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 
 - **Database** (`supabase/migrations/`): schema, row-level security, audited RPCs, private storage policies, append-only audit log, reference data (categories, 44 biomarkers including Portuguese lab names, preventive-care rules).
 - **App** (Next.js 16): Family Health dashboard, Family Overview, upload wizard with wrong-person warnings, documents, members and invitations, permissions, audit log, settings, each person's My Health pages, View as, and a permission-scoped Claude assistant.
-- **Tests**: 139 SQL access checks (`npm run test:db`), 31 unit tests (`npm test`), CI in `.github/workflows/ci.yml`.
+- **Tests**: 141 SQL access checks (`npm run test:db`, run twice: once as an older Supabase project that grants new tables to API roles automatically, once as a newer one that doesn't), 31 unit tests (`npm test`), CI in `.github/workflows/ci.yml`.
 
 ## Key decisions (and why)
 
@@ -54,10 +54,9 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 
 ## Next steps
 
-1. Merge PR #1 into `main`.
-2. Create the Supabase project and run the three migrations in order (README → Setup).
-3. Disable public sign-ups and create Miguel's user in Supabase Auth.
-4. Deploy to Vercel with the environment variables in `.env.example`; set Supabase's Site URL and redirect URLs.
-5. Sign in, set up the family, add Santi, Gui, Ben and Alice, and send invitations.
-6. Upload a few real reports (e.g. CUF blood tests) and check extraction, identity matching and filing. Adjust the prompt in `src/lib/ai/extract.ts` or biomarker synonyms if needed.
-7. Then pick from *Not built yet*.
+1. Create the Supabase project and run the three migrations in order (README → Setup).
+2. Disable public sign-ups and create Miguel's user in Supabase Auth.
+3. Deploy to Vercel with the environment variables in `.env.example`; set Supabase's Site URL and redirect URLs.
+4. Sign in, set up the family, add Santi, Gui, Ben and Alice, and send invitations.
+5. Upload a few real reports (e.g. CUF blood tests) and check extraction, identity matching and filing. Adjust the prompt in `src/lib/ai/extract.ts` or biomarker synonyms if needed.
+6. Then pick from *Not built yet*.

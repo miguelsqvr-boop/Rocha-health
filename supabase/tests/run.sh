@@ -15,22 +15,27 @@ db="rh_access_test_$$"
 base="${TEST_DATABASE_URL%/*}"
 url="$base/$db"
 
-psql "$TEST_DATABASE_URL" -qX -c "create database $db" >/dev/null
 trap 'psql "$TEST_DATABASE_URL" -qX -c "drop database if exists $db" >/dev/null' EXIT
 
-run() { psql "$url" -qX -v ON_ERROR_STOP=1 --set=VERBOSITY=terse -o /dev/null -f "$1"; }
-
-run "$here/supabase_stub.sql"
-for f in "$root"/supabase/migrations/*.sql; do run "$f"; done
-run "$here/helpers.sql"
-run "$here/fixtures.sql"
+run() { psql "$url" -qX -v ON_ERROR_STOP=1 --set=VERBOSITY=terse -o /dev/null "$@"; }
 
 status=0
-for t in "$here"/[0-9]*_test.sql; do
-  echo "# $(basename "$t")"
-  if ! run "$t" 2>&1 | sed -e 's/^psql:[^ ]* NOTICE:  /  /' -e 's/^NOTICE:  /  /'; then
-    status=1
-  fi
+# Once as an older Supabase project (new tables granted to API roles by
+# default), once as a newer one (no automatic grants).
+for legacy_grants in on off; do
+  echo "## Default grants for new tables: $legacy_grants"
+  psql "$TEST_DATABASE_URL" -qX -c "drop database if exists $db" -c "create database $db" >/dev/null
+  run -v legacy_grants=$legacy_grants -f "$here/supabase_stub.sql"
+  for f in "$root"/supabase/migrations/*.sql; do run -f "$f"; done
+  run -f "$here/helpers.sql"
+  run -f "$here/fixtures.sql"
+
+  for t in "$here"/[0-9]*_test.sql; do
+    echo "# $(basename "$t")"
+    if ! run -f "$t" 2>&1 | sed -e 's/^psql:[^ ]* NOTICE:  /  /' -e 's/^NOTICE:  /  /'; then
+      status=1
+    fi
+  done
 done
 if [ "$status" = 0 ]; then echo "All database access tests passed."; fi
 exit $status
