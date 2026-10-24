@@ -71,7 +71,7 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 1. Supabase dashboard (Claude's connector can't change Auth settings):
    - **Authentication → Sign In / Providers:** turn off *Allow new users to sign up* (keep the Email provider on).
    - **Authentication → Users → Add user → Create new user:** Miguel's email and a password, with *Auto Confirm User* ticked.
-2. Deploy to Vercel (import the GitHub repo) with the environment variables in `.env.example`:
+2. Deploy to Vercel (import the GitHub repo) with the environment variables in `.env.example`. `vercel.json` pins the functions to Dublin (`dub1`), next to the database in `eu-west-1`:
    - `NEXT_PUBLIC_SUPABASE_URL` = `https://fvbcsyrmqpuyaepysruz.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = the project's publishable key (Settings → API Keys, `sb_publishable_…`)
    - `SUPABASE_SERVICE_ROLE_KEY` = the secret key (`sb_secret_…`); server only, used just for invitation emails
