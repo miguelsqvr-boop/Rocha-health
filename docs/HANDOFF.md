@@ -1,14 +1,27 @@
 # Handoff: where Rocha Health stands
 
-_Last updated 4 Oct 2026, at the end of the first build session._
+_Last updated 24 Oct 2026, after setting up the Supabase project._
 
 Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what the app does and how to set it up).
 
 ## Status
 
 - The first build was merged into `main` (pull request #1, 5 Oct 2026). CI is green (typecheck, unit tests, build, database access tests).
-- **Not deployed anywhere yet.** No Supabase project or Vercel site exists. Next step: set them up (see *Next steps*).
+- **Supabase: set up (24 Oct 2026).** See *Supabase project* below. The database is ready; Auth settings still need a few dashboard clicks.
+- **Vercel: not deployed yet.** Next step after the Supabase dashboard settings (see *Next steps*).
 - The original brief was the "Family access, Super Admin & privacy model" spec: Super Admin (Miguel) manages the family; every member (Santi, Gui, Ben, Alice) has a private account that only sees their own records.
+
+## Supabase project
+
+| | |
+|---|---|
+| Organisation | **Rocha Family** (Free plan), separate from Miguel's paid "miguelsqvr-boop's Org" |
+| Project | ref `fvbcsyrmqpuyaepysruz`, URL `https://fvbcsyrmqpuyaepysruz.supabase.co`, region West EU (Ireland, `eu-west-1`). Its display name is still the default "miguelsqvr-boop's Project"; rename it under Settings → General if you like. |
+| Database | All three migrations applied and checked on 24 Oct 2026: a fingerprint of every function, policy, column, constraint, index, trigger, privilege, bucket and reference row matched a local build of the repo's migrations. `family_rpcs` was pasted into the SQL editor on Windows, so its 13 functions contain `\r\n` line endings; apart from that they are byte-identical. Signed-in users with no profile see only the built-in reference data; signed-out requests get "permission denied". |
+| Security advisor | Two expected notices: `wearable_credentials` has RLS with no policies (service role only, by design), and signed-in users can execute the 11 `SECURITY DEFINER` RPCs (each re-checks `auth.uid()` and permissions). Nothing reachable by `anon`. |
+| Migration history | Supabase lists `family_access_model` and `reference_data` under the timestamps they were applied (20261024…); `family_rpcs` isn't listed because it went through the SQL editor. Before ever using the Supabase CLI against this project, run `supabase migration repair --status reverted 20261024103817 20261024105037` and `supabase migration repair --status applied 20261003000100 20261003000200 20261003000300` so `db push` doesn't try to re-run them. |
+| Free plan | Paused after about a week with little activity (Supabase emails a warning first; resume from the dashboard), no automatic backups, 500 MB database / 1 GB files. Export records regularly, and consider moving the project to a paid organisation (Settings → General → Transfer project) once real records are in. |
+| Claude's access | The Supabase connector in Claude was authorised for the Rocha Family organisation to do this setup. Switch it back to "miguelsqvr-boop's Org" (Customize → Connectors → Supabase) before real medical records are uploaded, so Claude sessions can't reach this database. |
 
 ## What is built
 
@@ -39,7 +52,8 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 
 - SQL tests run as Miguel, Santi, Gui, an invited member, another family's admin, a doctor with a grant, a signed-in stranger and a signed-out visitor.
 - A 35-step browser walkthrough ran against local Postgres + PostgREST, with a small stand-in for Supabase Auth/Storage and a mock Claude endpoint. That harness lived only in the session's scratch space and is **not** in the repo. It found three bugs, all fixed: the member insert read-back policy, invite-link sign-in, and the audit flag scope.
-- **Not verified yet:** a real Supabase project, the real Claude API (no key was available), real invitation emails, a Vercel deployment.
+- The schema on the real Supabase project was compared with the repo's migrations (see *Supabase project*).
+- **Not verified yet:** the real Claude API (no key was available), real invitation emails, a Vercel deployment, sign-in on the real project.
 
 ## Not built yet / known gaps
 
@@ -54,9 +68,19 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 
 ## Next steps
 
-1. Create the Supabase project and run the three migrations in order (README → Setup).
-2. Disable public sign-ups and create Miguel's user in Supabase Auth.
-3. Deploy to Vercel with the environment variables in `.env.example`; set Supabase's Site URL and redirect URLs.
-4. Sign in, set up the family, add Santi, Gui, Ben and Alice, and send invitations.
-5. Upload a few real reports (e.g. CUF blood tests) and check extraction, identity matching and filing. Adjust the prompt in `src/lib/ai/extract.ts` or biomarker synonyms if needed.
-6. Then pick from *Not built yet*.
+1. Supabase dashboard (Claude's connector can't change Auth settings):
+   - **Authentication → Sign In / Providers:** turn off *Allow new users to sign up* (keep the Email provider on).
+   - **Authentication → Users → Add user → Create new user:** Miguel's email and a password, with *Auto Confirm User* ticked.
+2. Deploy to Vercel (import the GitHub repo) with the environment variables in `.env.example`:
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://fvbcsyrmqpuyaepysruz.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = the project's publishable key (Settings → API Keys, `sb_publishable_…`)
+   - `SUPABASE_SERVICE_ROLE_KEY` = the secret key (`sb_secret_…`); server only, used just for invitation emails
+   - `ANTHROPIC_API_KEY`, and `NEXT_PUBLIC_SITE_URL` = the Vercel address
+3. Back in Supabase, **Authentication → URL Configuration:** Site URL = the Vercel address; redirect URLs `https://<app>/auth/callback` and `https://<app>/invite/accept`.
+4. Sign in as Miguel; the first sign-in sets up the family and makes him Super Admin. Add Santi, Gui, Ben and Alice under **Members**.
+5. Family logins. Supabase's built-in email only reaches members of the Supabase organisation (Miguel), so either:
+   - set up custom SMTP (**Authentication → Emails → SMTP settings**; e.g. a Gmail account with an app password), after which invitations and sign-in links are emailed; or
+   - create each person's login under **Authentication → Users → Add user** (temporary password, *Auto Confirm User*), have them sign in at `/login`, then open the invitation link from **Members** and accept it (they can set their own password there).
+6. Switch Claude's Supabase connector back to "miguelsqvr-boop's Org".
+7. Upload a few real reports (e.g. CUF blood tests) and check extraction, identity matching and filing. Adjust the prompt in `src/lib/ai/extract.ts` or biomarker synonyms if needed.
+8. Then pick from *Not built yet*.
