@@ -64,9 +64,15 @@ alter table storage.objects enable row level security;
 grant select, insert, update, delete on storage.objects to anon, authenticated, service_role;
 grant select on storage.buckets to anon, authenticated, service_role;
 
--- Supabase grants table privileges in `public` to these roles by default and
--- relies on RLS; reproduce that so tests exercise the same posture.
+grant usage on schema public to anon, authenticated, service_role;
+
+-- Older Supabase projects grant every new object in `public` to the API roles
+-- by default; newer ones grant nothing. run.sh tests the migrations under both
+-- (-v legacy_grants=on|off), since they must give the same access either way.
+\if :legacy_grants
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
-grant usage on schema public to anon, authenticated, service_role;
+\else
+alter default privileges in schema public revoke execute on functions from public;
+\endif

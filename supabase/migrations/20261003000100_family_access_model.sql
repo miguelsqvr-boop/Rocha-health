@@ -804,8 +804,13 @@ alter table public.correction_requests enable row level security;
 alter table public.notifications enable row level security;
 alter table public.audit_log enable row level security;
 
--- Signed-out visitors get nothing, whatever the policies say.
-revoke all on all tables in schema public from anon;
+-- Table privileges for the API roles, set explicitly so the result is the same
+-- whether or not the project grants new tables to them by default (newer
+-- Supabase projects don't). Signed-out visitors get nothing, whatever the
+-- policies say. Signed-in users can reach the tables, RLS decides which rows,
+-- and the per-table revokes below remove writes that must go through RPCs.
+revoke all on all tables in schema public from anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
 
 -- families
 create policy families_select on public.families for select to authenticated
@@ -977,5 +982,5 @@ create view public.member_timeline with (security_invoker = true) as
   select c.family_id, c.member_id, c.completed_on, 'preventive_care', c.id, c.rule_code, c.note, null
   from public.preventive_care_completions c;
 
-revoke all on public.member_timeline from anon;
+revoke all on public.member_timeline from anon, authenticated;
 grant select on public.member_timeline to authenticated;

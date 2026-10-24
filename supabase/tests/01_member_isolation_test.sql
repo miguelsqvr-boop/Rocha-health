@@ -102,5 +102,11 @@ select tests.fails($$select count(*) from public.documents$$, 'permission denied
 select tests.fails($$select count(*) from public.health_results$$, 'permission denied', 'Signed-out visitors cannot query results');
 select tests.fails($$select public.create_document_upload(null, 'x.pdf', 'application/pdf', 10)$$, 'permission denied',
   'Signed-out visitors cannot call RPCs');
+select tests.ok(not exists (select 1 from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'v', 'p')
+    and has_table_privilege('anon', c.oid, 'select, insert, update, delete, truncate, references, trigger')),
+  'Signed-out visitors hold no privilege on any table');
+select tests.ok(not exists (select 1 from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'v', 'p')
+    and has_table_privilege('authenticated', c.oid, 'truncate, references, trigger')),
+  'Signed-in users cannot truncate, reference or add triggers to any table');
 
 rollback;

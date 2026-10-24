@@ -117,7 +117,7 @@ npm run build
 TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres npm run test:db
 ```
 
-`test:db` creates a scratch database on any Postgres 15+ server, applies a small stand-in for Supabase's `auth` and `storage` schemas, runs the migrations, and checks the access model as Miguel, Santi, Gui, an invited member, another family's admin, a doctor with a grant, a signed-in stranger, and a signed-out visitor: member isolation (including direct requests by id), Super Admin scope, wrong-person protection, moves, invitations and deactivation, private storage and signed-URL access, the append-only audit log, and future grants. CI runs all of the above (`.github/workflows/ci.yml`).
+`test:db` creates a scratch database on any Postgres 15+ server, applies a small stand-in for Supabase's `auth` and `storage` schemas, runs the migrations, and checks (twice: with and without Supabase's older automatic grants on new tables, since newer projects no longer add them) the access model as Miguel, Santi, Gui, an invited member, another family's admin, a doctor with a grant, a signed-in stranger, and a signed-out visitor: member isolation (including direct requests by id), Super Admin scope, wrong-person protection, moves, invitations and deactivation, private storage and signed-URL access, the append-only audit log, and future grants. CI runs all of the above (`.github/workflows/ci.yml`).
 
 ## Project layout
 
