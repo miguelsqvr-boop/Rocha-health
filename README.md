@@ -72,6 +72,8 @@ The assistant has tools (lab results, documents, overview, wellness) that resolv
 
 ## Screens
 
+On a phone the app has a bottom bar (Family or Home, My Health or Results, Upload, Exams, Menu), a **Take a photo** upload button, stacked layouts instead of wide tables, 16 px form text (so iPhones don't zoom in) and 44 px touch targets. It can be added to the home screen and opens full screen like an app (`src/app/manifest.ts`). There is deliberately no service worker: no health data is cached on the phone, so it needs a connection.
+
 - **Family Health** (`/admin`): results that need attention for each person (their latest results outside the lab's range, furthest out first), then each person's latest record and area statuses (Cardiovascular, Metabolic, Sleep, Fitness), each compared only with their own history.
 - **Exam Requests** (`/admin/exam-requests`, and per person under My Health): exams the doctors have asked for, organised by date, specialty, doctor or exam type, with filters for each.
 - **Family Overview** (`/admin/overview`): who has recent data, what is missing, recent uploads, upcoming preventive care, completeness and recent activity. No ranking, no "best/worst".

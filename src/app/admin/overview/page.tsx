@@ -102,7 +102,7 @@ export default async function FamilyOverview() {
           <p className="mt-3 text-xs text-muted">General screening guidance, adjustable in Settings. Confirm timing with your doctors.</p>
         </Card>
 
-        <Card title="Recent uploads" action={<Link href="/admin/documents" className="text-sm text-accent">All documents</Link>}>
+        <Card title="Recent uploads" action={<Link href="/admin/documents" className="tap text-sm text-accent">All documents</Link>}>
           {(uploads.data ?? []).length === 0 ? (
             <EmptyState title="No documents yet"><Link className="text-accent" href="/admin/upload">Upload the first one</Link></EmptyState>
           ) : (
@@ -121,7 +121,7 @@ export default async function FamilyOverview() {
           )}
         </Card>
 
-        <Card title="Recent health-record activity" action={<Link href="/admin/audit" className="text-sm text-accent">Audit log</Link>}>
+        <Card title="Recent health-record activity" action={<Link href="/admin/audit" className="tap text-sm text-accent">Audit log</Link>}>
           <ul className="divide-y divide-border">
             {((activity.data ?? []) as Pick<AuditRow, "id" | "occurred_at" | "actor_name" | "action" | "target_member_name" | "summary">[]).map((a) => (
               <li key={a.id} className="py-2 text-sm">

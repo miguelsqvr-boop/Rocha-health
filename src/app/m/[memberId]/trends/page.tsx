@@ -39,7 +39,7 @@ export default async function TrendsPage({
     .map((g) => ({ ...g, series: testGroup ? g.series.filter((s) => s.key === test) : g.series }));
   const base = `/m/${subject.id}/trends`;
   const chip = (active: boolean) =>
-    cx("rounded-full border px-3 py-1 text-xs", active ? "border-accent bg-accent-soft text-accent" : "border-border text-ink-2 hover:text-ink");
+    cx("tap rounded-full border px-3 py-1 text-xs", active ? "border-accent bg-accent-soft text-accent" : "border-border text-ink-2 hover:text-ink");
 
   return (
     <div className="space-y-4">
@@ -62,9 +62,9 @@ export default async function TrendsPage({
         <section key={g.code} aria-labelledby={`trends-${g.code}`} className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h2 id={`trends-${g.code}`} className="text-base font-semibold text-ink">{g.label}</h2>
-            {testGroup && <Link href={`${base}?category=${g.code}`} className="text-sm text-accent">All {g.label.toLowerCase()} tests</Link>}
+            {testGroup && <Link href={`${base}?category=${g.code}`} className="tap text-sm text-accent">All {g.label.toLowerCase()} tests</Link>}
           </div>
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {g.series.map((s) => {
               const latest = s.rows[0];
               const ref = seriesReference(s.rows, latest.biomarker, { adult });
@@ -89,7 +89,7 @@ export default async function TrendsPage({
                   {ref.source === null && !ref.text && <p className="mt-1 text-xs text-ink-2">The lab printed no reference range for this test.</p>}
                   <p className="mt-1 text-xs text-ink-2">
                     {s.rows.length === 1 ? "1 result" : `${s.rows.length} results`}
-                    {!testGroup && <> · <Link href={`${base}?test=${encodeURIComponent(s.key)}`} className="text-accent">Open</Link></>}
+                    {!testGroup && <> · <Link href={`${base}?test=${encodeURIComponent(s.key)}`} className="tap text-accent">Open</Link></>}
                   </p>
                 </Card>
               );

@@ -38,5 +38,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // API routes authenticate themselves (and must not have upload bodies buffered here).
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|icon.svg).*)"],
+  // The manifest and icons must load before sign-in (adding the app to a home screen).
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|manifest.webmanifest|icons/).*)"],
 };

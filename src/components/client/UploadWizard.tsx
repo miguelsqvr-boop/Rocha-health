@@ -39,6 +39,7 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const update = (key: string, next: Item) => setItems((list) => list.map((i) => (i.key === key ? next : i)));
 
@@ -123,10 +124,22 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
         className={cx("rounded-2xl border-2 border-dashed px-6 py-10 text-center", dragging ? "border-accent bg-accent-soft" : "border-border bg-surface")}
       >
-        <p className="font-medium text-ink">Drop medical documents here</p>
+        <p className="font-medium text-ink">
+          <span className="pointer-coarse:hidden">Drop medical documents here</span>
+          <span className="hidden pointer-coarse:inline">Add medical documents</span>
+        </p>
         <p className="mt-1 text-sm text-ink-2">{UPLOAD_TYPES_LABEL}, one or many. Up to 20 MB each.</p>
-        <button type="button" className={`${buttonClass.primary} mt-4`} onClick={() => inputRef.current?.click()}>Choose files</button>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {/* Phones and tablets: photograph a paper document straight from the camera. */}
+          <span className="hidden pointer-coarse:inline-flex">
+            <button type="button" className={buttonClass.secondary} onClick={() => cameraRef.current?.click()}>Take a photo</button>
+          </span>
+          <button type="button" className={buttonClass.primary} onClick={() => inputRef.current?.click()}>Choose files</button>
+        </div>
         <input ref={inputRef} type="file" multiple accept={UPLOAD_ACCEPT} className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+        {/* JPEG/PNG only, so iPhones convert HEIC photos to JPEG. */}
+        <input ref={cameraRef} type="file" accept="image/jpeg,image/png" capture="environment" className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+        <p className="mt-3 hidden text-xs text-ink-2 pointer-coarse:block">For a document with several pages, a PDF from a scanner app keeps the pages together.</p>
       </div>
 
       {active.length > 0 && (

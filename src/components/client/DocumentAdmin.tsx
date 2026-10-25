@@ -63,7 +63,7 @@ export function DetailsEditor(props: {
   }
 
   return (
-    <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
+    <form onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label className="text-sm"><span className="mb-1 block text-ink-2">Type</span>
         <select value={form.documentType} onChange={(e) => setForm({ ...form, documentType: e.target.value })} className={inputClass}>
           {DOCUMENT_TYPE_CODES.map((code) => <option key={code} value={code}>{DOCUMENT_TYPES[code].label}</option>)}

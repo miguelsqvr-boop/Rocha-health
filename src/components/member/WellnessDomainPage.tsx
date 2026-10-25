@@ -19,7 +19,7 @@ export async function WellnessDomainPage({ params, domain }: { params: Promise<{
         {canWrite && <AddWellnessForm memberId={subject.id} metrics={config.metrics} />}
         {entries.length === 0 && <div className="mt-4"><EmptyState title={`No ${config.label.toLowerCase()} data yet`}>Add entries manually; wearable sync is coming.</EmptyState></div>}
       </Card>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {config.metrics.map((metric) => {
           const rows = entries.filter((e) => e.metric === metric);
           if (rows.length === 0) return null;

@@ -48,7 +48,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
           <option value="">Everyone</option>
           {members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
         </select>
-        <input name="q" defaultValue={q} placeholder="Search title, lab, file name…" className={cx(inputClass, "w-64")} />
+        <input name="q" defaultValue={q} placeholder="Search title, lab, file name…" className={cx(inputClass, "w-full sm:w-64")} />
         <button className="rounded-xl border border-border bg-surface px-4 py-2 text-sm">Filter</button>
       </form>
       <Card>
@@ -60,9 +60,9 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
               <thead className="text-left text-xs text-ink-2">
                 <tr>
                   <th className="py-2 pr-3 font-medium">Document</th>
-                  <th className="py-2 pr-3 font-medium">Person</th>
-                  <th className="py-2 pr-3 font-medium">Date</th>
-                  <th className="py-2 pr-3 font-medium">Filed under</th>
+                  <th className="hidden py-2 pr-3 font-medium sm:table-cell">Person</th>
+                  <th className="hidden py-2 pr-3 font-medium sm:table-cell">Date</th>
+                  <th className="hidden py-2 pr-3 font-medium md:table-cell">Filed under</th>
                   <th className="py-2 pr-3 font-medium">Status</th>
                 </tr>
               </thead>
@@ -74,10 +74,11 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
                         {d.title ?? documentTypeInfo(d.document_type).label}
                       </Link>
                       <p className="text-xs text-ink-2">{d.provider ? `${d.provider} · ` : ""}{d.original_filename}</p>
+                      <p className="text-xs text-ink-2 sm:hidden">{d.member_id ? names.get(d.member_id) : "Unassigned"} · {formatDate(d.document_date)}</p>
                     </td>
-                    <td className="py-2 pr-3 text-ink">{d.member_id ? names.get(d.member_id) : <span className="text-ink-2">Unassigned</span>}</td>
-                    <td className="py-2 pr-3 text-ink-2 tabular">{formatDate(d.document_date)}</td>
-                    <td className="py-2 pr-3 text-xs text-ink-2">{d.filing_path.slice(1).join(" → ")}</td>
+                    <td className="hidden py-2 pr-3 text-ink sm:table-cell">{d.member_id ? names.get(d.member_id) : <span className="text-ink-2">Unassigned</span>}</td>
+                    <td className="hidden py-2 pr-3 text-ink-2 tabular sm:table-cell">{formatDate(d.document_date)}</td>
+                    <td className="hidden py-2 pr-3 text-xs text-ink-2 md:table-cell">{d.filing_path.slice(1).join(" → ")}</td>
                     <td className="py-2 pr-3">
                       <Badge tone={STATUS[d.status].tone}>{STATUS[d.status].label}</Badge>
                       {d.identity_confirmed_by && <span className="ml-1"><Badge tone="warning">Identity confirmed manually</Badge></span>}

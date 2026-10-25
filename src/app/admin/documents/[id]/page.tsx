@@ -108,7 +108,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
           <MoveDocumentForm documentId={doc.id} currentMemberId={doc.member_id!} members={members.map((m) => ({ id: m.id, display_name: m.display_name }))} identity={doc.identity_assessment} />
         </Card>
       </div>
-      <p className="mt-6 text-sm"><Link href="/admin/documents" className="text-accent">← All documents</Link></p>
+      <p className="mt-6 text-sm"><Link href="/admin/documents" className="tap text-accent">← All documents</Link></p>
     </>
   );
 }

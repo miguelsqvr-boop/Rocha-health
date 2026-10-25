@@ -54,7 +54,7 @@ export function MemberProfileForm({ memberId, initial }: { memberId?: string; in
   );
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+    <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {field("displayName", "Name the family uses", { required: true, placeholder: "Santi" })}
       {field("legalName", "Full name on medical documents", { placeholder: "Santiago Rocha" })}
       {field("dateOfBirth", "Date of birth", { type: "date" })}
