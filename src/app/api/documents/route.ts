@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import { ApiError, json, route, throwIfDbError } from "@/lib/api";
 import { BUCKET } from "@/lib/documents/pipeline";
-import { UPLOAD_TYPES_LABEL, uploadMimeType } from "@/lib/documents/file-types";
+import { DOCX_MIME, isProtectedWordFile, PROTECTED_WORD_MESSAGE, UPLOAD_TYPES_LABEL, uploadMimeType } from "@/lib/documents/file-types";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -22,11 +23,16 @@ export const POST = route({ mutates: true }, async ({ supabase }, request: Reque
   const memberId = memberIdRaw === "auto" ? null : memberIdRaw;
   if (memberId !== null && !UUID.test(memberId)) throw new ApiError(400, "Choose who this document is for.");
 
+  const bytes = Buffer.from(await file.arrayBuffer());
+  if (mimeType === DOCX_MIME && isProtectedWordFile(bytes)) throw new ApiError(400, PROTECTED_WORD_MESSAGE);
+  // Fingerprint of the bytes: the database refuses a file the family already has.
+  const contentHash = createHash("sha256").update(bytes).digest("hex");
   const { data, error } = await supabase.rpc("create_document_upload", {
     p_member_id: memberId,
     p_original_filename: file.name,
     p_mime_type: mimeType,
     p_size_bytes: file.size,
+    p_content_hash: contentHash,
   });
   throwIfDbError(error);
   const { document_id: documentId, storage_path: storagePath } = data as { document_id: string; storage_path: string };

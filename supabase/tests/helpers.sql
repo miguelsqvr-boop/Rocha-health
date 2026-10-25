@@ -88,6 +88,19 @@ begin
   raise exception 'FAIL: % (expected an error, but the statement succeeded)', p_label;
 end $$;
 
+-- Runs p_sql and returns the error message it raised (null if it succeeded),
+-- to check what an error does *not* reveal.
+create function tests.error_message(p_sql text) returns text
+language plpgsql as $$
+declare v_msg text;
+begin
+  execute p_sql;
+  return null;
+exception when others then
+  get stacked diagnostics v_msg = message_text;
+  return v_msg;
+end $$;
+
 -- Runs p_sql and returns the number of rows it affected (for UPDATE/DELETE
 -- that RLS silently filters to zero rows).
 create function tests.rows_affected(p_sql text) returns bigint
