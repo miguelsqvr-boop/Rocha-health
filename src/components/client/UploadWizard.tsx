@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import type { DocumentReview } from "@/lib/documents/review";
 import { documentTypeInfo } from "@/lib/domain/taxonomy";
 import { formatDate } from "@/lib/format";
+import { UPLOAD_ACCEPT, UPLOAD_TYPES_LABEL, uploadMimeType } from "@/lib/documents/file-types";
 import { Avatar, Badge, buttonClass, cx } from "@/components/ui";
 import { callApi } from "./api";
 import { ReviewForm } from "./ReviewForm";
@@ -22,7 +23,6 @@ type Item =
   | { key: string; file: File; state: "saved"; documentId: string; summary: string }
   | { key: string; file: File; state: "removed" };
 
-const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/gif";
 const MAX_BYTES = 20 * 1024 * 1024;
 
 /**
@@ -43,8 +43,8 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
   const update = (key: string, next: Item) => setItems((list) => list.map((i) => (i.key === key ? next : i)));
 
   async function processFile(item: Item & { state: "queued" }, memberId: string | "auto") {
-    if (!ACCEPT.split(",").includes(item.file.type)) {
-      return update(item.key, { key: item.key, file: item.file, state: "error", error: "Only PDF and image files can be uploaded." });
+    if (!uploadMimeType(item.file)) {
+      return update(item.key, { key: item.key, file: item.file, state: "error", error: `Only ${UPLOAD_TYPES_LABEL} can be uploaded.` });
     }
     if (item.file.size > MAX_BYTES) {
       return update(item.key, { key: item.key, file: item.file, state: "error", error: "This file is larger than 20 MB." });
@@ -120,9 +120,9 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
         className={cx("rounded-2xl border-2 border-dashed px-6 py-10 text-center", dragging ? "border-accent bg-accent-soft" : "border-border bg-surface")}
       >
         <p className="font-medium text-ink">Drop medical documents here</p>
-        <p className="mt-1 text-sm text-ink-2">PDFs or photos, one or many. Up to 20 MB each.</p>
+        <p className="mt-1 text-sm text-ink-2">{UPLOAD_TYPES_LABEL}, one or many. Up to 20 MB each.</p>
         <button type="button" className={`${buttonClass.primary} mt-4`} onClick={() => inputRef.current?.click()}>Choose files</button>
-        <input ref={inputRef} type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+        <input ref={inputRef} type="file" multiple accept={UPLOAD_ACCEPT} className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
       </div>
 
       {active.length > 0 && (

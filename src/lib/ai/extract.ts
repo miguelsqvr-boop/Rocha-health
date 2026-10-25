@@ -5,6 +5,8 @@ import { z } from "zod/v4";
 import { DOCUMENT_TYPE_CODES, DOCUMENT_TYPES } from "@/lib/domain/taxonomy";
 import type { BiomarkerDefinition } from "@/lib/domain/biomarkers";
 import { env } from "@/lib/env";
+import { DOCX_MIME } from "@/lib/documents/file-types";
+import { wordDocumentText } from "@/lib/documents/word";
 
 export const EXTRACTION_MODEL = "claude-opus-5-5";
 
@@ -73,13 +75,24 @@ export async function extractDocument(input: {
   }
   const client = new Anthropic();
   const data = Buffer.from(input.bytes).toString("base64");
-  const source =
-    input.mimeType === "application/pdf"
-      ? ({ type: "document", source: { type: "base64", media_type: "application/pdf", data } } as const)
-      : ({
-          type: "image",
-          source: { type: "base64", media_type: input.mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data },
-        } as const);
+  let source;
+  if (input.mimeType === DOCX_MIME) {
+    // Word files go in as their text and tables.
+    const text = await wordDocumentText(input.bytes).catch(() => {
+      throw new ExtractionError("This Word file could not be opened. Is it a valid .docx file?");
+    });
+    if (text.replace(/\s/g, "").length < 20) {
+      throw new ExtractionError("This Word file has no readable text (it may only contain a scanned image). Save it as PDF and upload that instead.");
+    }
+    source = { type: "document", source: { type: "text", media_type: "text/plain", data: text } } as const;
+  } else if (input.mimeType === "application/pdf") {
+    source = { type: "document", source: { type: "base64", media_type: "application/pdf", data } } as const;
+  } else {
+    source = {
+      type: "image",
+      source: { type: "base64", media_type: input.mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif", data },
+    } as const;
+  }
 
   let message;
   try {

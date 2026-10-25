@@ -44,6 +44,15 @@ select tests.ok((select (x ->> 'document_id') is not null
 select tests.ok((select (x ->> 'document_id') is not null
                  from public.create_document_upload(null, 'unknown.pdf', 'application/pdf', 100) x),
   'Miguel can upload and let AI identify the patient');
+select tests.ok((select (x ->> 'storage_path') like '%/original.docx'
+                 from public.create_document_upload(tests.member('Alice'), 'resultados.docx',
+                   'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 100) x),
+  'Word documents (.docx) can be uploaded and keep their extension');
+select tests.ok((select 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' = any(allowed_mime_types)
+                 from storage.buckets where id = 'health-documents'),
+  'The private bucket accepts .docx files');
+select tests.fails($$select public.create_document_upload(tests.member('Alice'), 'old.doc', 'application/msword', 100)$$,
+  'Unsupported file type', 'Old .doc files and other file types are refused');
 
 -- Corrections are audited with before/after values.
 select tests.ok(tests.rows_affected($$update public.health_results set value_numeric = 5.4
