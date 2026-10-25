@@ -6,7 +6,7 @@ import { DOCUMENT_TYPE_CODES, DOCUMENT_TYPES } from "@/lib/domain/taxonomy";
 import type { BiomarkerDefinition } from "@/lib/domain/biomarkers";
 import { env } from "@/lib/env";
 import { DOCX_MIME } from "@/lib/documents/file-types";
-import { wordDocumentText } from "@/lib/documents/word";
+import { WordDocumentError, wordDocumentText } from "@/lib/documents/word";
 
 export const EXTRACTION_MODEL = "claude-opus-5-5";
 
@@ -78,8 +78,10 @@ export async function extractDocument(input: {
   let source;
   if (input.mimeType === DOCX_MIME) {
     // Word files go in as their text and tables.
-    const text = await wordDocumentText(input.bytes).catch(() => {
-      throw new ExtractionError("This Word file could not be opened. Is it a valid .docx file?");
+    const text = await wordDocumentText(input.bytes).catch((error: unknown) => {
+      throw new ExtractionError(
+        error instanceof WordDocumentError ? error.message : "This Word file could not be opened. Is it a valid .docx file?",
+      );
     });
     if (text.replace(/\s/g, "").length < 20) {
       throw new ExtractionError("This Word file has no readable text (it may only contain a scanned image). Save it as PDF and upload that instead.");

@@ -1,4 +1,8 @@
 import mammoth from "mammoth";
+import { isProtectedWordFile, PROTECTED_WORD_MESSAGE } from "./file-types";
+
+/** A reason a Word file can't be read, worded for the person uploading it. */
+export class WordDocumentError extends Error {}
 
 /**
  * Plain text of a Word (.docx) document for the document reader: paragraphs
@@ -6,6 +10,7 @@ import mammoth from "mammoth";
  * keep their columns. Embedded images are dropped.
  */
 export async function wordDocumentText(bytes: Uint8Array): Promise<string> {
+  if (isProtectedWordFile(bytes)) throw new WordDocumentError(PROTECTED_WORD_MESSAGE);
   const { value } = await mammoth.convertToHtml(
     { buffer: Buffer.from(bytes) },
     { convertImage: mammoth.images.imgElement(async () => ({ src: "" })) },

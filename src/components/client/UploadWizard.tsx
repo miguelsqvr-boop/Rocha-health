@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import type { DocumentReview } from "@/lib/documents/review";
 import { documentTypeInfo } from "@/lib/domain/taxonomy";
 import { formatDate } from "@/lib/format";
-import { UPLOAD_ACCEPT, UPLOAD_TYPES_LABEL, uploadMimeType } from "@/lib/documents/file-types";
+import { DOCX_MIME, isProtectedWordFile, PROTECTED_WORD_MESSAGE, UPLOAD_ACCEPT, UPLOAD_TYPES_LABEL, uploadMimeType } from "@/lib/documents/file-types";
 import { Avatar, Badge, buttonClass, cx } from "@/components/ui";
 import { callApi } from "./api";
 import { ReviewForm } from "./ReviewForm";
@@ -43,8 +43,12 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
   const update = (key: string, next: Item) => setItems((list) => list.map((i) => (i.key === key ? next : i)));
 
   async function processFile(item: Item & { state: "queued" }, memberId: string | "auto") {
-    if (!uploadMimeType(item.file)) {
+    const mimeType = uploadMimeType(item.file);
+    if (!mimeType) {
       return update(item.key, { key: item.key, file: item.file, state: "error", error: `Only ${UPLOAD_TYPES_LABEL} can be uploaded.` });
+    }
+    if (mimeType === DOCX_MIME && isProtectedWordFile(new Uint8Array(await item.file.slice(0, 8).arrayBuffer()))) {
+      return update(item.key, { key: item.key, file: item.file, state: "error", error: PROTECTED_WORD_MESSAGE });
     }
     if (item.file.size > MAX_BYTES) {
       return update(item.key, { key: item.key, file: item.file, state: "error", error: "This file is larger than 20 MB." });

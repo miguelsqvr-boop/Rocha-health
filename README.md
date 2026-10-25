@@ -61,7 +61,7 @@ The assistant has tools (lab results, documents, overview, wellness) that resolv
 
 1. **+ Upload Health Document**
 2. By default each document is filed under the person it names: the printed patient name and date of birth are matched against every profile. You can choose a person up front instead (*Who is this for?*); the name is still checked against them.
-3. Drop one or many PDFs, Word documents (.docx) or photos (up to 20 MB each). Word files are read from their text and tables; the old .doc format isn't supported (save it as PDF or .docx).
+3. Drop one or many PDFs, Word documents (.docx) or photos (up to 20 MB each). Word files are read from their text and tables; the old .doc format and password-protected Word files can't be read and are refused before upload, with instructions to remove the password or save as PDF.
 4. Each file is fingerprinted (SHA-256). A file the family already has (not deleted) is refused, saying where the original is; a member only gets details about documents they can see. Otherwise it is stored privately and read by Claude
 5. Patient, document type, date, provider, results and biomarkers are identified. Results are matched to biomarker definitions (including Portuguese lab names) and flagged against the lab's reference range.
 6. *Ready to Save*: `Santi — Blood Test — 8 Sep 2026 · 4 results found · 3 high confidence · 1 needs review`

@@ -21,6 +21,19 @@ export const UPLOAD_ACCEPT = [...ALLOWED, ...Object.keys(BY_EXTENSION).map((ext)
 
 export const UPLOAD_TYPES_LABEL = "PDFs, Word documents (.docx) or photos";
 
+// Password-protected Word files (and old .doc files renamed to .docx) are
+// OLE compound files rather than the zip a .docx normally is, so their text
+// can't be read.
+const OLE_SIGNATURE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+
+export const PROTECTED_WORD_MESSAGE =
+  "This Word file is password-protected (or in the old .doc format), so it can't be read. Open it in Word, remove the password (File → Info → Protect Document → Encrypt with Password, then clear it), save it as .docx or PDF and upload that.";
+
+/** True for a file that claims to be .docx but is encrypted or an old .doc. */
+export function isProtectedWordFile(firstBytes: Uint8Array): boolean {
+  return OLE_SIGNATURE.every((byte, i) => firstBytes[i] === byte);
+}
+
 /**
  * The type to store a file as, or null if it can't be uploaded. Some systems
  * report no type (or a generic one) for Word files, so fall back to the
