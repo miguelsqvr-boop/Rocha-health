@@ -1,6 +1,6 @@
 # Handoff: where Rocha Health stands
 
-_Last updated 24 Oct 2026, after setting up the Supabase project._
+_Last updated 25 Oct 2026: Word (.docx) uploads, document dates, Trends by category._
 
 Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what the app does and how to set it up).
 
@@ -17,9 +17,9 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 |---|---|
 | Organisation | **Rocha Family** (Free plan), separate from Miguel's paid "miguelsqvr-boop's Org" |
 | Project | ref `fvbcsyrmqpuyaepysruz`, URL `https://fvbcsyrmqpuyaepysruz.supabase.co`, region West EU (Ireland, `eu-west-1`). Its display name is still the default "miguelsqvr-boop's Project"; rename it under Settings → General if you like. |
-| Database | All three migrations applied and checked on 24 Oct 2026: a fingerprint of every function, policy, column, constraint, index, trigger, privilege, bucket and reference row matched a local build of the repo's migrations. `family_rpcs` was pasted into the SQL editor on Windows, so its 13 functions contain `\r\n` line endings; apart from that they are byte-identical. Signed-in users with no profile see only the built-in reference data; signed-out requests get "permission denied". |
+| Database | The first three migrations applied and checked on 24 Oct 2026; `20261025000100_word_documents` (accept .docx) applied on 25 Oct 2026, its function byte-identical to the repo. The first three: a fingerprint of every function, policy, column, constraint, index, trigger, privilege, bucket and reference row matched a local build of the repo's migrations. `family_rpcs` was pasted into the SQL editor on Windows, so its 13 functions contain `\r\n` line endings; apart from that they are byte-identical. Signed-in users with no profile see only the built-in reference data; signed-out requests get "permission denied". |
 | Security advisor | Two expected notices: `wearable_credentials` has RLS with no policies (service role only, by design), and signed-in users can execute the 11 `SECURITY DEFINER` RPCs (each re-checks `auth.uid()` and permissions). Nothing reachable by `anon`. |
-| Migration history | Supabase lists `family_access_model` and `reference_data` under the timestamps they were applied (20261024…); `family_rpcs` isn't listed because it went through the SQL editor. Before ever using the Supabase CLI against this project, run `supabase migration repair --status reverted 20261024103817 20261024105037` and `supabase migration repair --status applied 20261003000100 20261003000200 20261003000300` so `db push` doesn't try to re-run them. |
+| Migration history | Supabase lists `family_access_model`, `reference_data` and `word_documents` under the timestamps they were applied (20261024…, 20261025161859); `family_rpcs` isn't listed because it went through the SQL editor. Before ever using the Supabase CLI against this project, run `supabase migration repair --status reverted 20261024103817 20261024105037 20261025161859` and `supabase migration repair --status applied 20261003000100 20261003000200 20261003000300 20261025000100` so `db push` doesn't try to re-run them. |
 | Free plan | Paused after about a week with little activity (Supabase emails a warning first; resume from the dashboard), no automatic backups, 500 MB database / 1 GB files. Export records regularly, and consider moving the project to a paid organisation (Settings → General → Transfer project) once real records are in. |
 | Claude's access | The Supabase connector in Claude was authorised for the Rocha Family organisation to do this setup. Switch it back to "miguelsqvr-boop's Org" (Customize → Connectors → Supabase) before real medical records are uploaded, so Claude sessions can't reach this database. |
 
