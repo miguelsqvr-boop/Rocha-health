@@ -69,6 +69,10 @@ grant usage on schema public to anon, authenticated, service_role;
 -- Older Supabase projects grant every new object in `public` to the API roles
 -- by default; newer ones grant nothing. run.sh tests the migrations under both
 -- (-v legacy_grants=on|off), since they must give the same access either way.
+\if :{?legacy_grants}
+\else
+\set legacy_grants on
+\endif
 \if :legacy_grants
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
