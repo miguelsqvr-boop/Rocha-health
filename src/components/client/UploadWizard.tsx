@@ -5,7 +5,10 @@ import { useRef, useState } from "react";
 import type { DocumentReview } from "@/lib/documents/review";
 import { documentTypeInfo } from "@/lib/domain/taxonomy";
 import { formatDate } from "@/lib/format";
-import { DOCX_MIME, isProtectedWordFile, PROTECTED_WORD_MESSAGE, UPLOAD_ACCEPT, UPLOAD_TYPES_LABEL, uploadMimeType } from "@/lib/documents/file-types";
+import {
+  BUCKET, DOCX_MIME, isProtectedWordFile, MAX_UPLOAD_BYTES as MAX_BYTES, PROTECTED_WORD_MESSAGE, sha256Hex, UPLOAD_ACCEPT, UPLOAD_TYPES_LABEL, uploadMimeType,
+} from "@/lib/documents/file-types";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Avatar, Badge, buttonClass, cx } from "@/components/ui";
 import { callApi } from "./api";
 import { ReviewForm } from "./ReviewForm";
@@ -23,7 +26,6 @@ type Item =
   | { key: string; file: File; state: "saved"; documentId: string; summary: string }
   | { key: string; file: File; state: "removed" };
 
-const MAX_BYTES = 20 * 1024 * 1024;
 
 /**
  * Upload workflow: 1 "+ Upload" → 2 who is it for (or let AI identify) →
@@ -55,14 +57,31 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
       return update(item.key, { key: item.key, file: item.file, state: "error", error: "This file is larger than 20 MB." });
     }
     update(item.key, { ...item, state: "uploading" });
-    const form = new FormData();
-    form.set("file", item.file);
-    form.set("memberId", memberId);
-    const uploaded = await callApi<{ documentId: string }>("POST", "/api/documents", form);
-    if (!uploaded.ok) {
-      return update(item.key, { key: item.key, file: item.file, state: "error", error: uploaded.data.error ?? "Upload failed." });
+    // 1. Register the file (name, type, size, fingerprint): duplicates are
+    //    refused here, and a private storage path is reserved for it.
+    const bytes = await item.file.arrayBuffer();
+    const reserved = await callApi<{ documentId: string; storagePath: string }>("POST", "/api/documents", {
+      filename: item.file.name,
+      mimeType,
+      size: item.file.size,
+      contentHash: await sha256Hex(bytes),
+      memberId,
+    });
+    if (!reserved.ok) {
+      return update(item.key, { key: item.key, file: item.file, state: "error", error: reserved.data.error ?? "Upload failed." });
     }
-    const documentId = uploaded.data.documentId;
+    const { documentId, storagePath } = reserved.data;
+    // 2. Send the file straight to private storage with the uploader's own
+    //    session (storage policies accept it only at the reserved path). Raw
+    //    bytes, so the stored type is the one resolved above even when the
+    //    browser didn't know it (Word files on some computers).
+    const { error: storageError } = await createSupabaseBrowserClient()
+      .storage.from(BUCKET)
+      .upload(storagePath, bytes, { contentType: mimeType, upsert: false });
+    if (storageError) {
+      await callApi("DELETE", `/api/documents/${documentId}`, { reason: "Upload failed" });
+      return update(item.key, { key: item.key, file: item.file, state: "error", error: "The file could not be sent. Check your connection and try again." });
+    }
     update(item.key, { key: item.key, file: item.file, state: "reading", documentId });
     const processed = await callApi<DocumentReview>("POST", `/api/documents/${documentId}/process`);
     if (!processed.ok) {

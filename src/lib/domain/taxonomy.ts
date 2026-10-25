@@ -47,6 +47,7 @@ export const DOCUMENT_TYPES = {
   referral: { label: "Referral", plural: "Referrals", category: "consultations", hasResults: false },
   exam_request: { label: "Exam Request", plural: "Exam Requests", category: "consultations", hasResults: false },
   discharge_summary: { label: "Discharge Summary", plural: "Discharge Summaries", category: "consultations", hasResults: false },
+  surgery: { label: "Surgery / Procedure", plural: "Surgeries & Procedures", category: "procedures", hasResults: false },
   endoscopy: { label: "Endoscopy Report", plural: "Endoscopies", category: "procedures", hasResults: false },
   prescription: { label: "Prescription", plural: "Prescriptions", category: "prescriptions", hasResults: false },
   vaccination_record: { label: "Vaccination Record", plural: "Vaccination Records", category: "vaccinations", hasResults: false },

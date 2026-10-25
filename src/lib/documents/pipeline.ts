@@ -11,7 +11,9 @@ import { listBiomarkers, listMembers } from "@/lib/data/queries";
 import { DOCUMENT_COLUMNS, type DocumentRow, type MemberRow } from "@/lib/data/types";
 import type { DocumentReview, ReviewResult, StoredExtraction } from "./review";
 
-export const BUCKET = "health-documents";
+import { BUCKET, sha256Hex } from "./file-types";
+
+export { BUCKET };
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function isoOrNull(value: string | null | undefined): string | null {
@@ -30,12 +32,16 @@ async function fileableMembers(supabase: ServerSupabase, viewer: Viewer): Promis
 export async function loadDocument(supabase: ServerSupabase, documentId: string) {
   const { data, error } = await supabase
     .from("documents")
-    .select(`${DOCUMENT_COLUMNS}, extraction, identity_assessment`)
+    .select(`${DOCUMENT_COLUMNS}, extraction, identity_assessment, content_hash`)
     .eq("id", documentId)
     .maybeSingle();
   throwIfDbError(error);
   if (!data) throw new ApiError(404, "Document not found.");
-  return data as DocumentRow & { extraction: StoredExtraction | null; identity_assessment: IdentityAssessment | null };
+  return data as DocumentRow & {
+    extraction: StoredExtraction | null;
+    identity_assessment: IdentityAssessment | null;
+    content_hash: string | null;
+  };
 }
 
 export async function documentReview(supabase: ServerSupabase, viewer: Viewer, documentId: string): Promise<DocumentReview> {
@@ -70,10 +76,16 @@ export async function processDocument(supabase: ServerSupabase, viewer: Viewer, 
   try {
     const { data: file, error: downloadError } = await supabase.storage.from(BUCKET).download(doc.storage_path);
     if (downloadError || !file) throw new ExtractionError("The uploaded file could not be read back. Please upload it again.");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    // The browser sends the file to storage itself, after registering its size
+    // and fingerprint: check that what arrived is that file.
+    if (bytes.byteLength !== Number(doc.size_bytes) || (doc.content_hash && (await sha256Hex(bytes)) !== doc.content_hash)) {
+      throw new ExtractionError("The stored file doesn't match the one that was registered. Please remove it and upload it again.");
+    }
 
     const biomarkers = await listBiomarkers(supabase);
     const extraction = await extractDocument({
-      bytes: new Uint8Array(await file.arrayBuffer()),
+      bytes,
       mimeType: doc.mime_type,
       filename: doc.original_filename,
       biomarkers,

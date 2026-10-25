@@ -2,6 +2,12 @@
 // The database (create_document_upload) and the storage bucket enforce the
 // same list.
 
+/** The private storage bucket for original files. */
+export const BUCKET = "health-documents";
+
+/** Largest file accepted (the bucket enforces the same limit). */
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
 export const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const BY_EXTENSION: Record<string, string> = {
@@ -32,6 +38,16 @@ export const PROTECTED_WORD_MESSAGE =
 /** True for a file that claims to be .docx but is encrypted or an old .doc. */
 export function isProtectedWordFile(firstBytes: Uint8Array): boolean {
   return OLE_SIGNATURE.every((byte, i) => firstBytes[i] === byte);
+}
+
+export function isUploadMimeType(type: string): boolean {
+  return ALLOWED.has(type);
+}
+
+/** SHA-256 of a file's bytes as hex: the fingerprint used to refuse duplicates. */
+export async function sha256Hex(bytes: ArrayBuffer | Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**

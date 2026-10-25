@@ -21,6 +21,9 @@ describe("filing", () => {
     expect(buildFilingPath("ecg", null, { cardiology: "Heart" })).toEqual(["Health Records", "Heart", "ECGs", "Undated"]);
     expect(categoryForType("not-a-type")).toBe("other");
   });
+  it("files surgeries and procedures under Procedures", () => {
+    expect(buildFilingPath("surgery", "2020-12-15")).toEqual(["Health Records", "Procedures", "Surgeries & Procedures", "2020", "December"]);
+  });
 });
 
 const defs: BiomarkerDefinition[] = [
