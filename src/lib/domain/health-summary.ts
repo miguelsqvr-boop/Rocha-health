@@ -26,6 +26,65 @@ export const LAB_DOMAINS = [
   { code: "inflammation", label: "Inflammation" },
 ] as const;
 
+/** Minimal shape of a stored lab result, as the result pages read it. */
+export interface LabResultLike {
+  analyte_name: string;
+  unit: string | null;
+  value_numeric: number | string | null;
+  biomarker: { code: string; name: string; category: string } | null;
+}
+
+/** One key per test: the catalogue code, or the printed name ignoring case. */
+export function resultKey(r: Pick<LabResultLike, "analyte_name" | "biomarker">): string {
+  return r.biomarker?.code ?? r.analyte_name.trim().toLowerCase();
+}
+
+export interface TrendSeries<R> {
+  key: string;
+  name: string;
+  unit: string | null;
+  rows: R[];
+  /** Results for this test recorded in another unit, left out of the chart. */
+  otherUnits: number;
+}
+
+export interface TrendGroup<R> {
+  code: string;
+  label: string;
+  series: TrendSeries<R>[];
+}
+
+/**
+ * Charts for one person's numeric results, grouped by category in a fixed
+ * order (tests outside the catalogue go under "Other results"). One series
+ * per test, in the unit of its most recent result. Expects newest first.
+ */
+export function trendGroups<R extends LabResultLike>(results: R[]): TrendGroup<R>[] {
+  const series = new Map<string, TrendSeries<R> & { category: string }>();
+  for (const r of results) {
+    if (r.value_numeric === null) continue;
+    const key = resultKey(r);
+    let entry = series.get(key);
+    if (!entry) {
+      const category = LAB_DOMAINS.some((d) => d.code === r.biomarker?.category) ? r.biomarker!.category : "other";
+      entry = { key, name: r.biomarker?.name ?? r.analyte_name.trim(), unit: r.unit, rows: [], otherUnits: 0, category };
+      series.set(key, entry);
+    }
+    if (entry.unit === r.unit) entry.rows.push(r);
+    else entry.otherUnits += 1;
+  }
+  return [...LAB_DOMAINS, { code: "other", label: "Other results" }]
+    .map((d) => ({
+      code: d.code,
+      label: d.label,
+      series: [...series.values()]
+        .filter((s) => s.category === d.code)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(({ category: _category, ...rest }) => rest),
+    }))
+    .filter((g) => g.series.length > 0);
+}
+
 /** How far a value sits outside its range, relative to the range edge (0 = inside). */
 export function distanceOutside(value: number, low: number | null, high: number | null): number {
   if (low != null && value < low) return (low - value) / Math.max(Math.abs(low), 1e-9);

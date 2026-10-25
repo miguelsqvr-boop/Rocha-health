@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildFilingPath, categoryForType } from "./taxonomy";
 import { buildBiomarkerIndex, computeFlag, effectiveRange, parseNumeric, resultConfidence, type BiomarkerDefinition } from "./biomarkers";
-import { fitnessStatus, labDomainStatus, sleepStatus, type ResultPoint } from "./health-summary";
+import { fitnessStatus, labDomainStatus, sleepStatus, trendGroups, type LabResultLike, type ResultPoint } from "./health-summary";
 import { addMonths, ageOn, preventiveItems, type PreventiveRule } from "./preventive";
 import { completeness } from "./completeness";
 import { accessSummary, canAccessMember } from "./permissions";
@@ -145,5 +145,50 @@ describe("formatting", () => {
   it("formats dates as in the spec, independent of locale data", () => {
     expect(formatDate("2026-09-12")).toBe("12 Sep 2026");
     expect(formatDate(null)).toBe("—");
+  });
+});
+
+describe("trends by category", () => {
+  const bm = (code: string, name: string, category: string) => ({ code, name, category });
+  const row = (date: string, value: number | null, unit: string | null, biomarker: LabResultLike["biomarker"], analyte = biomarker?.name ?? "") =>
+    ({ result_date: date, value_numeric: value, unit, biomarker, analyte_name: analyte });
+  const ldl = bm("ldl_cholesterol", "LDL cholesterol", "cardiovascular");
+  const hba1c = bm("hba1c", "HbA1c", "metabolic");
+  const tg = bm("triglycerides", "Triglycerides", "cardiovascular");
+
+  it("groups tests by category in a fixed order, unknown tests last, names sorted", () => {
+    const groups = trendGroups([
+      row("2026-09-01", 5.4, "%", hba1c),
+      row("2026-09-01", 120, "mg/dL", tg),
+      row("2026-09-01", 98, "mg/dL", ldl),
+      row("2026-09-01", 1.2, "U/mL", null, "Anti-TPO"),
+    ]);
+    expect(groups.map((g) => g.code)).toEqual(["cardiovascular", "metabolic", "other"]);
+    expect(groups[0].series.map((s) => s.name)).toEqual(["LDL cholesterol", "Triglycerides"]);
+    expect(groups[2].series[0]).toMatchObject({ key: "anti-tpo", name: "Anti-TPO" });
+  });
+
+  it("keeps every numeric result for a test, newest first, and merges printed names regardless of case", () => {
+    const [other] = trendGroups([
+      row("2026-09-01", 3, "U/mL", null, "Anti-TPO"),
+      row("2025-03-01", 2, "U/mL", null, "anti-tpo "),
+      row("2024-01-01", null, "U/mL", null, "Anti-TPO"),
+    ]);
+    expect(other.series).toHaveLength(1);
+    expect(other.series[0].rows.map((r) => r.result_date)).toEqual(["2026-09-01", "2025-03-01"]);
+  });
+
+  it("charts one unit per test and counts results in other units instead of mixing them", () => {
+    const [metabolic] = trendGroups([
+      row("2026-09-01", 92, "mg/dL", bm("glucose_fasting", "Fasting glucose", "metabolic")),
+      row("2024-09-01", 5.1, "mmol/L", bm("glucose_fasting", "Fasting glucose", "metabolic")),
+      row("2023-09-01", 95, "mg/dL", bm("glucose_fasting", "Fasting glucose", "metabolic")),
+    ]);
+    expect(metabolic.series[0]).toMatchObject({ unit: "mg/dL", otherUnits: 1 });
+    expect(metabolic.series[0].rows.map((r) => r.value_numeric)).toEqual([92, 95]);
+  });
+
+  it("returns nothing to chart when there are no numeric results", () => {
+    expect(trendGroups([row("2026-09-01", null, null, ldl)])).toEqual([]);
   });
 });

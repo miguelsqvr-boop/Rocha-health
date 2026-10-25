@@ -17,12 +17,15 @@ export function ActionButton(props: {
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function run() {
     if (props.confirm && !window.confirm(props.confirm)) return;
     setMessage(null);
+    setBusy(true);
     const result = await callApi<{ redirectTo?: string }>(props.method, props.url, props.body);
+    setBusy(false);
     if (!result.ok) {
       setMessage({ ok: false, text: result.data.error ?? "Something went wrong." });
       return;
@@ -36,7 +39,7 @@ export function ActionButton(props: {
 
   return (
     <span className="inline-flex flex-col gap-1">
-      <button type="button" onClick={run} disabled={pending} className={props.className ?? buttonClass[props.variant ?? "secondary"]}>
+      <button type="button" onClick={run} disabled={pending || busy} className={props.className ?? buttonClass[props.variant ?? "secondary"]}>
         {props.children}
       </button>
       {message && <span role="status" className={message.ok ? "text-xs text-good-ink" : "text-xs text-critical-ink"}>{message.text}</span>}

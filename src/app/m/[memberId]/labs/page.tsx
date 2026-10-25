@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { memberPage } from "@/lib/member-page";
 import { memberResults } from "@/lib/data/queries";
-import { LAB_DOMAINS } from "@/lib/domain/health-summary";
+import { LAB_DOMAINS, resultKey } from "@/lib/domain/health-summary";
 import { formatDate, formatRange, formatValue } from "@/lib/format";
 import { Card, EmptyState, FlagBadge } from "@/components/ui";
 import { ResultEditor } from "@/components/client/DocumentAdmin";
@@ -12,7 +12,7 @@ export default async function LabsPage({ params }: { params: Promise<{ memberId:
   const results = await memberResults(supabase, subject.id);
   const latest = new Map<string, (typeof results)[number]>();
   for (const r of results) {
-    const key = r.biomarker?.code ?? r.analyte_name.toLowerCase();
+    const key = resultKey(r);
     if (!latest.has(key)) latest.set(key, r);
   }
   const groups = [...LAB_DOMAINS, { code: "other", label: "Other results" }].map((d) => ({
@@ -35,7 +35,7 @@ export default async function LabsPage({ params }: { params: Promise<{ memberId:
                 {g.rows.map((r) => (
                   <tr key={r.id}>
                     <td className="py-2 pr-3">
-                      <Link href={`/m/${subject.id}/trends?test=${encodeURIComponent(r.biomarker?.code ?? r.analyte_name)}`} className="text-ink hover:text-accent">{r.biomarker?.name ?? r.analyte_name}</Link>
+                      <Link href={`/m/${subject.id}/trends?test=${encodeURIComponent(resultKey(r))}`} className="text-ink hover:text-accent">{r.biomarker?.name ?? r.analyte_name}</Link>
                     </td>
                     <td className="py-2 pr-3 tabular text-ink"><span className="mr-2">{formatValue(r.value_numeric, r.value_text, r.unit)}</span><FlagBadge flag={r.flag} /></td>
                     <td className="py-2 pr-3 tabular text-ink-2">{formatRange(r.reference_low, r.reference_high, r.reference_text)}</td>
