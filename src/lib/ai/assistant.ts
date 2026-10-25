@@ -6,6 +6,7 @@ import type { ServerSupabase } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
 import type { MemberRow } from "@/lib/data/types";
 import {
+  examRequests,
   listMembers,
   listPreventiveRules,
   memberDocuments,
@@ -17,6 +18,7 @@ import {
 import { LAB_DOMAINS, fitnessStatus, labDomainStatus, sleepStatus } from "@/lib/domain/health-summary";
 import { preventiveItems } from "@/lib/domain/preventive";
 import { documentTypeInfo } from "@/lib/domain/taxonomy";
+import { examTypeLabel, specialtyLabel } from "@/lib/domain/exams";
 import { metricLabel } from "@/lib/domain/wellness";
 import { normalizeText } from "@/lib/domain/names";
 
@@ -115,16 +117,20 @@ export async function runAssistant(params: {
     }),
     betaZodTool({
       name: "get_documents",
-      description: "Filed health documents for one person (type, date, provider), newest first.",
+      description: "Filed health documents for one person (type, date, provider, doctor), newest first. Exam requests include the exams requested.",
       inputSchema: z.object({ person: personField }),
       run: async ({ person }) => {
         const member = resolve(person);
         if (typeof member === "string") return member;
         await audit(member, "documents");
-        const docs = await memberDocuments(supabase, member.id);
+        const [docs, requests] = await Promise.all([memberDocuments(supabase, member.id), examRequests(supabase, member.id)]);
+        const exams = new Map(requests.map((r) => [r.id, r.requested_exams.map((e) => ({ exam: e.exam_name, type: examTypeLabel(e.exam_type), body_site: e.body_site }))]));
         return JSON.stringify({
           person: member.display_name,
-          documents: docs.map((d) => ({ date: d.document_date, title: d.title ?? documentTypeInfo(d.document_type).label, type: d.document_type, provider: d.provider })),
+          documents: docs.map((d) => ({
+            date: d.document_date, title: d.title ?? documentTypeInfo(d.document_type).label, type: d.document_type, provider: d.provider,
+            doctor: d.doctor_name, specialty: d.specialty ? specialtyLabel(d.specialty) : null, requested_exams: exams.get(d.id),
+          })),
         });
       },
     }),

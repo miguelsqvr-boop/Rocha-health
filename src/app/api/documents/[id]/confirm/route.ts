@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ApiError, json, readJson, route, throwIfDbError } from "@/lib/api";
 import { categoryLabels } from "@/lib/data/queries";
 import { buildFilingPath, categoryForType, DOCUMENT_TYPE_CODES } from "@/lib/domain/taxonomy";
+import { DoctorInput, RequestedExamInput } from "@/lib/documents/inputs";
 import { isFutureDate } from "@/lib/validation";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -28,6 +29,8 @@ const ConfirmInput = z.object({
   documentDate: isoDate.nullable(),
   provider: z.string().trim().max(120).nullable(),
   results: z.array(ResultInput).max(500),
+  ...DoctorInput,
+  requestedExams: z.array(RequestedExamInput).max(100).optional(),
 });
 
 /**
@@ -53,6 +56,10 @@ export const POST = route({ mutates: true }, async ({ supabase }, request: Reque
     p_category: categoryForType(input.documentType),
     p_filing_path: buildFilingPath(input.documentType, input.documentDate, labels),
     p_results: input.results,
+    p_doctor_name: input.doctorName || null,
+    p_specialty: input.specialty ?? null,
+    // Exams are kept only for exam requests.
+    p_requested_exams: input.documentType === "exam_request" ? (input.requestedExams ?? []) : [],
   });
   throwIfDbError(error);
   return json(data);

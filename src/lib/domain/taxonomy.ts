@@ -45,6 +45,7 @@ export const DOCUMENT_TYPES = {
   holter: { label: "Holter Monitor", plural: "Holter Monitoring", category: "cardiology", hasResults: false },
   consultation_note: { label: "Consultation Note", plural: "Consultation Notes", category: "consultations", hasResults: false },
   referral: { label: "Referral", plural: "Referrals", category: "consultations", hasResults: false },
+  exam_request: { label: "Exam Request", plural: "Exam Requests", category: "consultations", hasResults: false },
   discharge_summary: { label: "Discharge Summary", plural: "Discharge Summaries", category: "consultations", hasResults: false },
   endoscopy: { label: "Endoscopy Report", plural: "Endoscopies", category: "procedures", hasResults: false },
   prescription: { label: "Prescription", plural: "Prescriptions", category: "prescriptions", hasResults: false },

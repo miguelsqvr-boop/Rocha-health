@@ -9,6 +9,7 @@ const ADMIN_NAV = [
   { href: "/admin/overview", label: "Family Overview" },
   { href: "/admin/upload", label: "Upload" },
   { href: "/admin/documents", label: "Documents" },
+  { href: "/admin/exam-requests", label: "Exam Requests" },
   { href: "/admin/members", label: "Members" },
   { href: "/admin/permissions", label: "Permissions" },
   { href: "/admin/audit", label: "Audit Log" },

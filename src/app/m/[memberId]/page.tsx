@@ -3,10 +3,11 @@ import { memberPage } from "@/lib/member-page";
 import {
   listPreventiveRules, memberDocuments, memberPreventiveCompletions, memberResults, memberTimeline, memberWellness, unreadNotifications,
 } from "@/lib/data/queries";
-import { LAB_DOMAINS, fitnessStatus, labDomainStatus, sleepStatus, seriesByBiomarker } from "@/lib/domain/health-summary";
+import { LAB_DOMAINS, fitnessStatus, labDomainStatus, needsAttention, sleepStatus } from "@/lib/domain/health-summary";
 import { preventiveItems } from "@/lib/domain/preventive";
-import { formatDate, formatValue } from "@/lib/format";
-import { Badge, Card, EmptyState, FlagBadge, StatusPill } from "@/components/ui";
+import { formatDate } from "@/lib/format";
+import { Badge, Card, EmptyState, StatusPill } from "@/components/ui";
+import { NeedsAttention } from "@/components/member/NeedsAttention";
 
 export default async function MemberOverview({ params }: { params: Promise<{ memberId: string }> }) {
   const { subject, supabase, ownView } = await memberPage(params);
@@ -23,9 +24,7 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
     biomarker_code: r.biomarker?.code ?? null, analyte_name: r.analyte_name, category: r.biomarker?.category ?? null,
     result_date: r.result_date, value: r.value_numeric, low: r.reference_low, high: r.reference_high,
   }));
-  const latestFlagged = [...seriesByBiomarker(points).values()].map((s) => s[0])
-    .map((p) => results.find((r) => r.result_date === p.result_date && (r.biomarker?.code ?? r.analyte_name.toLowerCase()) === (p.biomarker_code ?? p.analyte_name.toLowerCase())))
-    .filter((r) => r && r.flag && r.flag !== "normal");
+  const attention = needsAttention(results);
   const due = preventiveItems({
     member: subject, rules, documents: docs,
     results: points.map((p) => ({ biomarker_code: p.biomarker_code, result_date: p.result_date })),
@@ -44,6 +43,7 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
           </ul>
         </Card>
       )}
+      {results.length > 0 && <NeedsAttention items={attention} memberId={subject.id} />}
       <Card title="Health areas">
         <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {LAB_DOMAINS.map((d) => (
@@ -58,22 +58,7 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
         <p className="mt-4 text-xs text-muted">Based on lab reference ranges and your own previous results. Not a diagnosis.</p>
       </Card>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card title="Latest results outside the reference range" action={<Link href={`${base}/labs`} className="text-sm text-accent">All results</Link>}>
-          {latestFlagged.length === 0 ? <EmptyState title="Nothing outside the reference range" /> : (
-            <ul className="divide-y divide-border text-sm">
-              {latestFlagged.map((r) => r && (
-                <li key={r.id} className="flex items-center gap-3 py-2">
-                  <span className="text-ink">{r.biomarker?.name ?? r.analyte_name}</span>
-                  <span className="tabular text-ink">{formatValue(r.value_numeric, r.value_text, r.unit)}</span>
-                  <FlagBadge flag={r.flag} />
-                  <span className="ml-auto text-xs text-ink-2">{formatDate(r.result_date)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {latestFlagged.length > 0 && <p className="mt-3 text-xs text-muted">Worth discussing with a doctor, especially if it persists.</p>}
-        </Card>
-        <Card title="Preventive care" action={<Link href={`${base}/preventive-care`} className="text-sm text-accent">See all</Link>}>
+        <Card title="Preventive care" className="lg:col-span-2" action={<Link href={`${base}/preventive-care`} className="text-sm text-accent">See all</Link>}>
           {due.length === 0 ? <EmptyState title="All up to date" /> : (
             <ul className="divide-y divide-border text-sm">
               {due.slice(0, 6).map((i) => (

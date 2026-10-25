@@ -5,9 +5,11 @@ import type { BiomarkerDefinition } from "@/lib/domain/biomarkers";
 import type { PreventiveRule } from "@/lib/domain/preventive";
 import {
   DOCUMENT_COLUMNS,
+  EXAM_REQUEST_COLUMNS,
   MEMBER_COLUMNS,
   RESULT_COLUMNS,
   type DocumentRow,
+  type ExamRequestRow,
   type MedicationRow,
   type MemberRow,
   type ResultRow,
@@ -64,6 +66,20 @@ export async function memberDocuments(supabase: ServerSupabase, memberId: string
   if (opts.filedOnly ?? true) query = query.eq("status", "filed");
   const { data } = await query.order("document_date", { ascending: false, nullsFirst: false });
   return (data ?? []) as DocumentRow[];
+}
+
+/**
+ * Filed exam requests, newest first, with their exams in printed order. All
+ * the family's that the viewer may read (through RLS), or one person's.
+ */
+export async function examRequests(supabase: ServerSupabase, memberId?: string): Promise<ExamRequestRow[]> {
+  let query = supabase.from("documents").select(EXAM_REQUEST_COLUMNS).eq("document_type", "exam_request").eq("status", "filed");
+  if (memberId) query = query.eq("member_id", memberId);
+  const { data } = await query.order("document_date", { ascending: false, nullsFirst: false });
+  return ((data ?? []) as unknown as ExamRequestRow[]).map((r) => ({
+    ...r,
+    requested_exams: [...r.requested_exams].sort((a, b) => a.sort_order - b.sort_order),
+  }));
 }
 
 export async function memberResults(supabase: ServerSupabase, memberId: string): Promise<ResultRow[]> {

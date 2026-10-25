@@ -19,6 +19,12 @@ export interface ReviewResult {
   result_date: string | null;
 }
 
+export interface ReviewRequestedExam {
+  exam_name: string;
+  exam_type: string;
+  body_site: string | null;
+}
+
 export interface StoredExtraction {
   model: string;
   extracted_at: string;
@@ -27,6 +33,10 @@ export interface StoredExtraction {
   patient_name: string | null;
   patient_date_of_birth: string | null;
   results: ReviewResult[];
+  // Absent on documents read before exam requests were added.
+  doctor_name?: string | null;
+  specialty?: string | null;
+  requested_exams?: ReviewRequestedExam[];
 }
 
 export interface ReviewCandidate {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildFilingPath, categoryForType } from "./taxonomy";
-import { buildBiomarkerIndex, computeFlag, effectiveRange, parseNumeric, resultConfidence, type BiomarkerDefinition } from "./biomarkers";
-import { fitnessStatus, labDomainStatus, sleepStatus, trendGroups, type LabResultLike, type ResultPoint } from "./health-summary";
+import { buildBiomarkerIndex, computeFlag, effectiveRange, parseNumeric, resultConfidence, unitKey, type BiomarkerDefinition } from "./biomarkers";
+import {
+  fitnessStatus, labDomainStatus, needsAttention, resultKey, seriesReference, sleepStatus, trendGroups, type LabResultLike, type ResultPoint,
+} from "./health-summary";
+import { doctorKey, filterExamRequests, groupExamRequests, type ExamRequestLike } from "./exams";
 import { addMonths, ageOn, preventiveItems, type PreventiveRule } from "./preventive";
 import { completeness } from "./completeness";
 import { accessSummary, canAccessMember } from "./permissions";
@@ -24,6 +27,9 @@ const defs: BiomarkerDefinition[] = [
   { id: "1", code: "hba1c", name: "HbA1c", category: "metabolic", default_unit: "%", synonyms: ["Hemoglobina A1c", "Hemoglobina glicada"], reference_low: 4, reference_high: 5.6, higher_is_better: false },
   { id: "2", code: "vitamin_d", name: "Vitamin D (25-OH)", category: "vitamins_minerals", default_unit: "ng/mL", synonyms: ["Vitamina D"], reference_low: 30, reference_high: 100, higher_is_better: null },
   { id: "3", code: "glucose_fasting", name: "Fasting glucose", category: "metabolic", default_unit: "mg/dL", synonyms: ["Glicose"], reference_low: 70, reference_high: 99, higher_is_better: null },
+  { id: "4", code: "albumin", name: "Albumin", category: "liver", default_unit: "g/dL", synonyms: ["Albumina"], reference_low: 3.5, reference_high: 5, higher_is_better: null },
+  { id: "5", code: "neutrophils_pct", name: "Neutrophils %", category: "blood_count", default_unit: "%", synonyms: ["Neutrófilos", "Neutrófilos %"], reference_low: null, reference_high: null, higher_is_better: null },
+  { id: "6", code: "neutrophils_abs", name: "Neutrophils (absolute)", category: "blood_count", default_unit: "10^9/L", synonyms: ["Neutrófilos", "Neutrófilos (absoluto)"], reference_low: null, reference_high: null, higher_is_better: null },
 ];
 
 describe("biomarkers", () => {
@@ -36,6 +42,30 @@ describe("biomarkers", () => {
   });
   it("prefers the extractor's proposed code", () => {
     expect(index.match("Some odd label", "vitamin_d")?.code).toBe("vitamin_d");
+  });
+  it("links a result only to a test it can be", () => {
+    const blood = (unit: string | null, numeric = true, specimen: string | null = null) => ({ unit, numeric, specimen });
+    // Same printed name, told apart by unit.
+    expect(index.match("Neutrófilos", null, blood("%"))?.code).toBe("neutrophils_pct");
+    expect(index.match("Neutrófilos", null, blood("x 10^3/µl"))?.code).toBe("neutrophils_abs");
+    expect(index.match("Neutrófilos (absoluto)", null, blood("x10^9/L"))?.code).toBe("neutrophils_abs");
+    // Word results, urine and percentages of other tests are not catalogue tests.
+    expect(index.match("Glicose", null, blood(null, false))).toBeNull();
+    expect(index.match("Glicose", null, blood("mg/dL", true, "urine"))).toBeNull();
+    expect(index.match("Albumina", null, blood("%"))).toBeNull();
+    expect(index.match("Albumina", "albumin", blood("%"))).toBeNull();
+    expect(index.match("Albumina", null, blood("g/dl"))?.code).toBe("albumin");
+  });
+  it("treats unit spellings that give the same number as one unit", () => {
+    expect(unitKey("x 10^3/µl")).toBe(unitKey("10^9/L"));
+    expect(unitKey("x10^6/µl")).toBe(unitKey("x10^12/L"));
+    expect(unitKey("µUI/mL")).toBe(unitKey("mIU/L"));
+    expect(unitKey("uUI/ml")).toBe(unitKey("mUI/l"));
+    expect(unitKey("U/l")).toBe(unitKey("UI/L"));
+    expect(unitKey("mm/hora")).toBe(unitKey("mm"));
+    expect(unitKey("mg/dl")).toBe(unitKey("mg/dL"));
+    expect(unitKey("mg/dL")).not.toBe(unitKey("mmol/L"));
+    expect(unitKey("mg/L")).not.toBe(unitKey("mg/dL"));
   });
   it("parses numbers as labs print them", () => {
     expect(parseNumeric("5,6")).toBe(5.6);
@@ -166,7 +196,7 @@ describe("trends by category", () => {
     ]);
     expect(groups.map((g) => g.code)).toEqual(["cardiovascular", "metabolic", "other"]);
     expect(groups[0].series.map((s) => s.name)).toEqual(["LDL cholesterol", "Triglycerides"]);
-    expect(groups[2].series[0]).toMatchObject({ key: "anti-tpo", name: "Anti-TPO" });
+    expect(groups[2].series[0]).toMatchObject({ key: "anti-tpo|u/ml", name: "Anti-TPO" });
   });
 
   it("keeps every numeric result for a test, newest first, and merges printed names regardless of case", () => {
@@ -179,18 +209,106 @@ describe("trends by category", () => {
     expect(other.series[0].rows.map((r) => r.result_date)).toEqual(["2026-09-01", "2025-03-01"]);
   });
 
-  it("charts one unit per test and counts results in other units instead of mixing them", () => {
+  it("charts each unit of a test separately, merging spellings of the same unit", () => {
+    const glucose = bm("glucose_fasting", "Fasting glucose", "metabolic");
     const [metabolic] = trendGroups([
-      row("2026-09-01", 92, "mg/dL", bm("glucose_fasting", "Fasting glucose", "metabolic")),
-      row("2024-09-01", 5.1, "mmol/L", bm("glucose_fasting", "Fasting glucose", "metabolic")),
-      row("2023-09-01", 95, "mg/dL", bm("glucose_fasting", "Fasting glucose", "metabolic")),
+      row("2026-09-01", 92, "mg/dL", glucose),
+      row("2024-09-01", 5.1, "mmol/L", glucose),
+      row("2023-09-01", 95, "mg/dl", glucose),
     ]);
-    expect(metabolic.series[0]).toMatchObject({ unit: "mg/dL", otherUnits: 1 });
-    expect(metabolic.series[0].rows.map((r) => r.value_numeric)).toEqual([92, 95]);
+    expect(metabolic.series.map((s) => [s.unit, s.rows.map((r) => r.value_numeric)])).toEqual([
+      ["mg/dL", [92, 95]],
+      ["mmol/L", [5.1]],
+    ]);
+    const [other] = trendGroups([row("2025-01-21", 2.7, "x 10^3/µl", null, "Platelets"), row("2021-02-09", 2.9, "x10^9/L", null, "platelets")]);
+    expect(other.series).toHaveLength(1);
+    expect(resultKey({ analyte_name: "Basófilos", unit: "%", biomarker: null })).not.toBe(resultKey({ analyte_name: "Basófilos", unit: "x10^3/µl", biomarker: null }));
   });
 
   it("returns nothing to chart when there are no numeric results", () => {
     expect(trendGroups([row("2026-09-01", null, null, ldl)])).toEqual([]);
+  });
+});
+
+describe("reference ranges", () => {
+  const r = (date: string, low: number | null, high: number | null, text: string | null = null, unit = "10^9/L") =>
+    ({ result_date: date, unit, reference_low: low, reference_high: high, reference_text: text });
+  const catalogue = { default_unit: "10^9/L", reference_low: 1.5, reference_high: 7.5 };
+
+  it("uses the lab's range printed with the latest result", () => {
+    expect(seriesReference([r("2025-01-21", 1.5, 8), r("2021-02-09", 2, 7)], catalogue, { adult: true })).toMatchObject({ low: 1.5, high: 8, source: "lab" });
+  });
+  it("falls back to the range printed on an earlier report of the same test", () => {
+    expect(seriesReference([r("2025-01-21", null, null), r("2021-02-09", 1.5, 8)], catalogue, { adult: true }))
+      .toMatchObject({ low: 1.5, high: 8, source: "earlier", fromDate: "2021-02-09" });
+  });
+  it("uses the catalogue's typical range only for adults and in its own unit", () => {
+    expect(seriesReference([r("2025-01-21", null, null)], catalogue, { adult: true })).toMatchObject({ low: 1.5, high: 7.5, source: "typical" });
+    expect(seriesReference([r("2025-01-21", null, null)], catalogue, { adult: false }).source).toBeNull();
+    expect(seriesReference([r("2025-01-21", null, null, null, "/µl")], catalogue, { adult: true }).source).toBeNull();
+  });
+  it("keeps a range printed only as text", () => {
+    expect(seriesReference([r("2025-01-21", null, null, "Risco elevado: >160; Risco baixo: <115")], null, { adult: true }))
+      .toEqual({ low: null, high: null, source: null, fromDate: null, text: "Risco elevado: >160; Risco baixo: <115" });
+  });
+});
+
+describe("results that need attention", () => {
+  const res = (id: string, name: string, date: string, value: number | null, low: number | null, high: number | null, flag: string | null, text: string | null = null) => ({
+    id, analyte_name: name, unit: "mg/dL", value_numeric: value, value_text: text, biomarker: null,
+    result_date: date, reference_low: low, reference_high: high, reference_text: null, flag,
+  });
+  it("lists each test's latest result outside its range, furthest out first", () => {
+    const items = needsAttention([
+      res("1", "TSH", "2026-10-01", 9, 0.4, 4, "high"),
+      res("2", "Ferritin", "2026-10-01", 20, 30, 300, "low"),
+      res("3", "LDL", "2026-10-01", 120, null, 130, "normal"),
+      res("4", "LDL", "2025-01-01", 160, null, 130, "high"),
+      res("5", "Chlamydia PCR", "2026-09-01", null, null, null, "abnormal", "Positivo"),
+      res("6", "Glucose", "2026-10-01", 30, 70, 99, null),
+    ]);
+    expect(items.map((i) => [i.result.id, i.level, i.direction])).toEqual([
+      ["1", "far", "high"],
+      ["6", "far", "low"],
+      ["5", "abnormal", null],
+      ["2", "outside", "low"],
+    ]);
+  });
+});
+
+describe("exam requests", () => {
+  const exam = (exam_type: string) => ({ exam_name: exam_type, exam_type, body_site: null });
+  const req = (id: string, date: string | null, doctor: string | null, specialty: string | null, types: string[], member = "m1"): ExamRequestLike =>
+    ({ id, member_id: member, document_date: date, doctor_name: doctor, specialty, requested_exams: types.map(exam) });
+  const requests = [
+    req("a", "2026-10-02", "Dra. Ana Costa", "cardiology", ["echocardiogram", "blood_test"]),
+    req("b", "2025-03-10", "ana costa", "cardiology", ["holter"]),
+    req("c", "2026-01-15", null, null, ["ultrasound"], "m2"),
+    req("d", null, "Rui Lopes", "general_practice", []),
+  ];
+  it("treats spellings of a doctor's name as one doctor", () => {
+    expect(doctorKey("Dra. Ana  Costa")).toBe(doctorKey("ana costa"));
+  });
+  it("groups by year, newest first, undated last", () => {
+    expect(groupExamRequests(requests, "date").map((s) => [s.label, s.requests.map((r) => r.id)]))
+      .toEqual([["2026", ["a", "c"]], ["2025", ["b"]], ["Undated", ["d"]]]);
+  });
+  it("groups by doctor and specialty, not stated last", () => {
+    expect(groupExamRequests(requests, "doctor").map((s) => [s.label, s.requests.map((r) => r.id)]))
+      .toEqual([["Dra. Ana Costa", ["a", "b"]], ["Rui Lopes", ["d"]], ["Doctor not stated", ["c"]]]);
+    expect(groupExamRequests(requests, "specialty").map((s) => s.label))
+      .toEqual(["Cardiology", "General practice / family medicine", "Specialty not stated"]);
+  });
+  it("lists a request under every type of exam it asks for", () => {
+    expect(groupExamRequests(requests, "type").map((s) => [s.key, s.requests.map((r) => r.id)])).toEqual([
+      ["blood_test", ["a"]], ["ultrasound", ["c"]], ["echocardiogram", ["a"]], ["holter", ["b"]], ["other", ["d"]],
+    ]);
+  });
+  it("filters by person, specialty, doctor and exam type", () => {
+    expect(filterExamRequests(requests, { doctor: doctorKey("Ana Costa") }).map((r) => r.id)).toEqual(["a", "b"]);
+    expect(filterExamRequests(requests, { specialty: "none" }).map((r) => r.id)).toEqual(["c"]);
+    expect(filterExamRequests(requests, { type: "ultrasound", member: "m2" }).map((r) => r.id)).toEqual(["c"]);
+    expect(filterExamRequests(requests, { type: "ultrasound", member: "m1" })).toEqual([]);
   });
 });
 
