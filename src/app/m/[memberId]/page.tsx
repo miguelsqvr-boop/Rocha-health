@@ -45,7 +45,7 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
       )}
       {results.length > 0 && <NeedsAttention items={attention} memberId={subject.id} />}
       <Card title="Health areas">
-        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {LAB_DOMAINS.map((d) => (
             <div key={d.code} className="flex items-center justify-between gap-2">
               <dt className="text-sm text-ink-2">{d.label}</dt>
@@ -58,7 +58,7 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
         <p className="mt-4 text-xs text-muted">Based on lab reference ranges and your own previous results. Not a diagnosis.</p>
       </Card>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card title="Preventive care" className="lg:col-span-2" action={<Link href={`${base}/preventive-care`} className="text-sm text-accent">See all</Link>}>
+        <Card title="Preventive care" className="lg:col-span-2" action={<Link href={`${base}/preventive-care`} className="tap text-sm text-accent">See all</Link>}>
           {due.length === 0 ? <EmptyState title="All up to date" /> : (
             <ul className="divide-y divide-border text-sm">
               {due.slice(0, 6).map((i) => (
@@ -74,7 +74,7 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
             </ul>
           )}
         </Card>
-        <Card title="Timeline" className="lg:col-span-2" action={<Link href={`${base}/records`} className="text-sm text-accent">Health records</Link>}>
+        <Card title="Timeline" className="lg:col-span-2" action={<Link href={`${base}/records`} className="tap text-sm text-accent">Health records</Link>}>
           {timeline.length === 0 ? <EmptyState title="No records yet" /> : (
             <ol className="relative space-y-3 border-l border-border pl-4">
               {timeline.map((e) => (

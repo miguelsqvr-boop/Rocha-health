@@ -101,3 +101,28 @@ body {
   outline-offset: 2px;
 }
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* Phones and tablets. */
+body {
+  /* Keep content clear of the notch in landscape. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+}
+/* Below 16px, iPhones zoom the page in when a field is focused. */
+@media (max-width: 639px) {
+  input, select, textarea { font-size: 16px; }
+}
+/* Fingers need bigger targets than a mouse pointer. */
+@media (pointer: coarse) {
+  button, select, summary,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+    min-height: 2.75rem;
+  }
+  .tap {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+}

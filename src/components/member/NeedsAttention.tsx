@@ -41,7 +41,7 @@ export function NeedsAttention({ items, memberId }: { items: AttentionItem<Resul
           return (
             <li key={r.id} className="py-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <Link href={`/m/${memberId}/trends?test=${encodeURIComponent(resultKey(r))}`} className="font-medium text-ink hover:text-accent">
+                <Link href={`/m/${memberId}/trends?test=${encodeURIComponent(resultKey(r))}`} className="tap font-medium text-ink hover:text-accent">
                   {r.biomarker?.name ?? r.analyte_name}
                 </Link>
                 <span className="tabular font-semibold text-ink">{formatValue(r.value_numeric, r.value_text, r.unit)}</span>

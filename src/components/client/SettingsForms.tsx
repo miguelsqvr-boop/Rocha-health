@@ -45,7 +45,7 @@ export function BiomarkerForm() {
         });
         if (ok) setForm({ code: "", name: "", category: "metabolic", defaultUnit: "", referenceLow: "", referenceHigh: "", synonyms: "" });
       }}
-      className="grid gap-2 sm:grid-cols-4"
+      className="grid grid-cols-1 gap-2 sm:grid-cols-4"
     >
       <input required placeholder="code (e.g. omega3_index)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className={inputClass} />
       <input required placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
@@ -78,7 +78,7 @@ export function PreventiveRuleForm() {
         });
         if (ok) setForm(empty);
       }}
-      className="grid gap-2 sm:grid-cols-4"
+      className="grid grid-cols-1 gap-2 sm:grid-cols-4"
     >
       <input required placeholder="code (e.g. skin_check)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className={inputClass} />
       <input required placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputClass} />

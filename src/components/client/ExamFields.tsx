@@ -27,6 +27,8 @@ export function DoctorFields(props: {
   );
 }
 
+const EXAM_ROW_COLUMNS = "sm:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1fr)_auto]";
+
 /** The exams an exam request asks for: name, type and body area, editable. */
 export function ExamListEditor({ exams, onChange }: { exams: ReviewRequestedExam[]; onChange: (exams: ReviewRequestedExam[]) => void }) {
   const update = (index: number, patch: Partial<ReviewRequestedExam>) =>
@@ -39,43 +41,39 @@ export function ExamListEditor({ exams, onChange }: { exams: ReviewRequestedExam
         <span className="text-ink-2">Check each name and type; they are used to organise your exam requests.</span>
       </p>
       {exams.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-2 text-left text-xs text-ink-2">
-              <tr>
-                <th className="px-3 py-2 font-medium">Exam</th>
-                <th className="px-3 py-2 font-medium">Type</th>
-                <th className="px-3 py-2 font-medium">Body area</th>
-                <th className="px-3 py-2"><span className="sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {exams.map((exam, i) => (
-                <tr key={i}>
-                  <td className="px-3 py-2">
-                    <input aria-label={`Exam ${i + 1}`} value={exam.exam_name} onChange={(e) => update(i, { exam_name: e.target.value })} className={`${inputClass} min-w-48`} />
-                  </td>
-                  <td className="px-3 py-2">
-                    <select aria-label={`Type of exam ${i + 1}`} value={exam.exam_type} onChange={(e) => update(i, { exam_type: e.target.value })} className={`${inputClass} w-auto`}>
-                      {Object.entries(EXAM_GROUPS).map(([group, label]) => (
-                        <optgroup key={group} label={label}>
-                          {EXAM_TYPE_CODES.filter((code) => EXAM_TYPES[code].group === group).map((code) => (
-                            <option key={code} value={code}>{EXAM_TYPES[code].label}</option>
-                          ))}
-                        </optgroup>
+        // Columns on wider screens; on phones each exam stacks: name, then type and body area.
+        <div className="rounded-xl border border-border text-sm">
+          <div className={`hidden gap-3 rounded-t-xl bg-surface-2 px-3 py-2 text-xs font-medium text-ink-2 sm:grid ${EXAM_ROW_COLUMNS}`}>
+            <span>Exam</span><span>Type</span><span>Body area</span><span className="sr-only">Actions</span>
+          </div>
+          <ul className="divide-y divide-border">
+            {exams.map((exam, i) => (
+              <li key={i} className={`grid grid-cols-2 items-center gap-2 p-3 sm:gap-3 sm:px-3 sm:py-2 ${EXAM_ROW_COLUMNS}`}>
+                <input
+                  aria-label={`Exam ${i + 1}`} placeholder="Exam name" value={exam.exam_name}
+                  onChange={(e) => update(i, { exam_name: e.target.value })}
+                  className={`${inputClass} col-span-2 sm:col-span-1`}
+                />
+                <select aria-label={`Type of exam ${i + 1}`} value={exam.exam_type} onChange={(e) => update(i, { exam_type: e.target.value })} className={`${inputClass} col-span-2 sm:col-span-1`}>
+                  {Object.entries(EXAM_GROUPS).map(([group, label]) => (
+                    <optgroup key={group} label={label}>
+                      {EXAM_TYPE_CODES.filter((code) => EXAM_TYPES[code].group === group).map((code) => (
+                        <option key={code} value={code}>{EXAM_TYPES[code].label}</option>
                       ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-2">
-                    <input aria-label={`Body area for exam ${i + 1}`} value={exam.body_site ?? ""} onChange={(e) => update(i, { body_site: e.target.value || null })} className={`${inputClass} w-36`} />
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button type="button" className="text-xs text-ink-2 hover:text-critical-ink" onClick={() => onChange(exams.filter((_, j) => j !== i))}>Remove</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </optgroup>
+                  ))}
+                </select>
+                <input
+                  aria-label={`Body area for exam ${i + 1}`} placeholder="Body area" value={exam.body_site ?? ""}
+                  onChange={(e) => update(i, { body_site: e.target.value || null })}
+                  className={inputClass}
+                />
+                <button type="button" className="justify-self-end text-xs text-ink-2 hover:text-critical-ink" onClick={() => onChange(exams.filter((_, j) => j !== i))}>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       <button type="button" className="mt-2 text-sm text-accent" onClick={() => onChange([...exams, { exam_name: "", exam_type: "blood_test", body_site: null }])}>

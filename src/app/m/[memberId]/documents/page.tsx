@@ -51,9 +51,9 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
                   <p className="text-xs text-ink-2">{formatDate(d.document_date)}{d.provider && ` · ${d.provider}`} · {d.filing_path.slice(1).join(" → ")}</p>
                   {d.uploaded_by_name && <p className="text-xs text-muted">Uploaded by {d.uploaded_by_name}</p>}
                 </div>
-                <a href={`/api/documents/${d.id}/file`} target="_blank" rel="noreferrer" className="text-accent">View</a>
-                <a href={`/api/documents/${d.id}/file?download=1`} className="text-accent">Download</a>
-                {isAdmin ? <Link href={`/admin/documents/${d.id}`} className="text-accent">Edit / move</Link>
+                <a href={`/api/documents/${d.id}/file`} target="_blank" rel="noreferrer" className="tap text-accent">View</a>
+                <a href={`/api/documents/${d.id}/file?download=1`} className="tap text-accent">Download</a>
+                {isAdmin ? <Link href={`/admin/documents/${d.id}`} className="tap text-accent">Edit / move</Link>
                   : canWrite && <RequestCorrection memberId={subject.id} entityType="document" entityId={d.id} label={`${d.title ?? "Document"} on ${formatDate(d.document_date)}`} />}
               </li>
             ))}

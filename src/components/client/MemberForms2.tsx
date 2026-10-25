@@ -43,7 +43,7 @@ export function AddMedicationForm({ memberId, kind }: { memberId: string; kind: 
   const { setMessage, node } = useStatus();
   return (
     <form
-      className="grid gap-2 sm:grid-cols-5"
+      className="grid grid-cols-1 gap-2 sm:grid-cols-5"
       onSubmit={async (e) => {
         e.preventDefault();
         const result = await callApi("POST", `/api/members/${memberId}/medications`, {
@@ -97,7 +97,7 @@ export function SelfProfileForm({ memberId, displayName, phone }: { memberId: st
   const { setMessage, node } = useStatus();
   return (
     <form
-      className="grid gap-3 sm:grid-cols-2"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2"
       onSubmit={async (e) => {
         e.preventDefault();
         const result = await callApi("PATCH", `/api/members/${memberId}`, { displayName: form.displayName, phone: form.phone || null });

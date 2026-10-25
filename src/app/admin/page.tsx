@@ -69,7 +69,7 @@ export default async function FamilyAdminDashboard() {
           </ul>
         </section>
       )}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {snapshots.map(({ member, latestBloodTest, latestRecord, statuses, attention }) => (
           <Link key={member.id} href={`/m/${member.id}`} className="group block">
             <Card className="h-full transition group-hover:border-accent">

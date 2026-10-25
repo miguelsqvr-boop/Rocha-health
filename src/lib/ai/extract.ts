@@ -36,8 +36,8 @@ export const ExtractionSchema = z.object({
   patient_name: z.string().nullable().describe("Patient name exactly as printed; null if absent"),
   patient_date_of_birth: z.string().nullable().describe("YYYY-MM-DD; null if absent"),
   document_type: z.enum(DOCUMENT_TYPE_CODES as [string, ...string[]]),
-  title: z.string().describe("Short English title, e.g. 'Blood Test', 'Chest X-ray'"),
-  document_date: z.string().nullable().describe("YYYY-MM-DD: collection/exam date, else report date"),
+  title: z.string().describe("Short English title, e.g. 'Blood Test', 'Chest X-ray'; for a surgery, the procedure, e.g. 'Catheter ablation of accessory pathway'"),
+  document_date: z.string().nullable().describe("YYYY-MM-DD: collection/exam/procedure date, else report date"),
   provider: z.string().nullable().describe("Laboratory, hospital or clinic, e.g. 'CUF'"),
   summary: z.string().describe("One or two neutral sentences describing what the document contains"),
   doctor_name: z.string().nullable().describe("Doctor who requested, prescribed or wrote the document, without 'Dr.'/'Dra.'; null if absent"),
@@ -59,13 +59,15 @@ The family files documents from many countries and languages (often Portuguese).
 
 Patient identity matters: the app uses patient_name and patient_date_of_birth to make sure a document is filed under the right family member. Copy them exactly as printed. If they are not on the document, return null rather than guessing.
 
-Dates: return YYYY-MM-DD. Portuguese and European documents write dates day-first (12/09/2026 is 12 September 2026). document_date is the date the document itself records: the sample collection or exam date, otherwise the report or issue date. Never use today's date or guess one; return null if no date is printed.
+Dates: return YYYY-MM-DD. Portuguese and European documents write dates day-first (12/09/2026 is 12 September 2026). document_date is the date the document itself records: the sample collection, exam or procedure date, otherwise the report or issue date. Never use today's date or guess one; return null if no date is printed.
 
 Results: include every measured test value (blood, urine, ECG measurements, body composition, etc.). Keep values exactly as printed in "value". Set specimen from the section or test name (urine strip, urine sediment and urine culture are urine; parasitology is stool). The catalogue lists blood tests: use biomarker_code only for a blood result that clearly is that test, with a number as its value and a unit compatible with the catalogue's (a percentage only for a test measured in %); otherwise null. A word result such as "Negativo", or any urine or stool result, never gets a code.
 
 Reference ranges: copy the range printed on the same line as the value into reference_range, and split it into reference_low / reference_high when it is a plain interval or limit ("3.5 - 5.0", "< 32", "> 60"). Labs often print one test twice, as a percentage and an absolute count, or in % and g/dL, with a range on only one of the two lines: give each line only its own range and leave the other null. Never copy a range from another line or fill one in from general knowledge. When the range is written as levels or cases (risk levels, time of day, posture, age or sex), copy all of the text into reference_range; set reference_low / reference_high only when the document shows which case applies to this patient.
 
-Exam requests: a document asking for exams to be done (requisição or pedido de exames, credencial, MCDT, prescription of analyses or imaging) is an exam_request. It has no results: list each requested exam in requested_exams with its type, and leave results empty. doctor_name is the requesting or prescribing doctor (for any document, the doctor who wrote it; not a lab's technical director). Set specialty from the doctor's specialty or service when it is printed.
+Surgeries and procedures: an operation or procedure report (surgery, catheterisation, ablation, pacemaker, biopsy under anaesthesia, …), and a discharge note or summary from a hospital stay for a surgery or procedure (look at the reason for admission), is a surgery document. Its title names the procedure in English, and its document_date is the date of the procedure, else the admission date, not the discharge date. A discharge summary from a stay without a procedure (observation, illness) stays a discharge_summary. Endoscopies keep their own type.
+
+Exam requests: a document asking for exams to be done (requisição or pedido de exames, credencial, MCDT, prescription of analyses or imaging) is an exam_request. It has no results: list each requested exam in requested_exams with its type, and leave results empty. doctor_name is the requesting or prescribing doctor (for any document, the doctor who wrote it or is responsible for it; not a lab's technical director, and not a nurse or technician: null if no doctor is named). Set specialty from the doctor's specialty or service when it is printed.
 
 Document types:
 ${types}

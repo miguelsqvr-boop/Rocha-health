@@ -11,6 +11,8 @@ import { buttonClass, inputClass } from "@/components/ui";
 import { callApi } from "./api";
 import { DoctorFields, ExamListEditor, cleanExams } from "./ExamFields";
 
+const RESULT_ROW_COLUMNS = "sm:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,1.5fr)_auto_auto]";
+
 interface Props {
   review: DocumentReview;
   /** Member chosen in "Who is this for?" (null = let AI identify). */
@@ -177,7 +179,7 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
       )}
 
       {/* Details */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-sm">
           <span className="mb-1 block text-ink-2">Type</span>
           <select value={documentType} onChange={(e) => setDocumentType(e.target.value)} className={inputClass}>
@@ -220,57 +222,43 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
             <strong>{results.length} results found.</strong> {results.length - needsReview} high confidence
             {needsReview > 0 && <>, <span className="text-serious-ink">{needsReview} need review</span></>}.
           </p>
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-2 text-left text-xs text-ink-2">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Test</th>
-                  <th className="px-3 py-2 font-medium">Value</th>
-                  <th className="px-3 py-2 font-medium">Unit</th>
-                  <th className="px-3 py-2 font-medium">Reference</th>
-                  <th className="px-3 py-2 font-medium">Check</th>
-                  <th className="px-3 py-2"><span className="sr-only">Actions</span></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {results.map((r, i) => (
-                  <tr key={i} className={r.confidence === "needs_review" ? "bg-warning/10" : undefined}>
-                    <td className="px-3 py-2">
-                      <p className="text-ink">{r.biomarker_name ?? r.analyte_name}</p>
-                      {r.biomarker_name && r.biomarker_name !== r.analyte_name && <p className="text-xs text-ink-2">{r.analyte_name}</p>}
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        aria-label={`Value for ${r.analyte_name}`}
-                        defaultValue={r.value_numeric ?? r.value_text ?? ""}
-                        onBlur={(e) => {
-                          const numeric = parseNumeric(e.target.value);
-                          updateResult(i, { value_numeric: numeric, value_text: numeric === null ? e.target.value : null });
-                        }}
-                        className={`${inputClass} w-24 tabular`}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input aria-label={`Unit for ${r.analyte_name}`} defaultValue={r.unit ?? ""} onBlur={(e) => updateResult(i, { unit: e.target.value || null })} className={`${inputClass} w-24`} />
-                    </td>
-                    <td className="px-3 py-2 text-ink-2 tabular">
-                      {formatRange(r.reference_low, r.reference_high, r.reference_text)}
-                      {r.flag && r.flag !== "normal" && <span className="ml-2 text-serious-ink">{r.flag === "low" ? "▼ Low" : r.flag === "high" ? "▲ High" : "! Abnormal"}</span>}
-                    </td>
-                    <td className="px-3 py-2">
-                      {r.confidence === "needs_review" ? (
-                        <button type="button" className="text-xs text-accent" onClick={() => updateResult(i, { confidence: "high" })}>Mark as checked</button>
-                      ) : (
-                        <span className="text-xs text-good-ink">✓ OK</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <button type="button" className="text-xs text-ink-2 hover:text-critical-ink" onClick={() => setResults((rows) => rows.filter((_, j) => j !== i))}>Remove</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Columns on wider screens; on phones each result stacks: name, value and unit, range, check. */}
+          <div className="rounded-xl border border-border text-sm">
+            <div className={`hidden gap-3 rounded-t-xl bg-surface-2 px-3 py-2 text-xs font-medium text-ink-2 sm:grid ${RESULT_ROW_COLUMNS}`}>
+              <span>Test</span><span>Value</span><span>Unit</span><span>Reference</span><span>Check</span><span className="sr-only">Actions</span>
+            </div>
+            <ul className="divide-y divide-border">
+              {results.map((r, i) => (
+                <li key={i} className={`grid grid-cols-2 items-center gap-2 p-3 sm:gap-3 sm:px-3 sm:py-2 ${RESULT_ROW_COLUMNS} ${r.confidence === "needs_review" ? "bg-warning/10" : ""}`}>
+                  <div className="col-span-2 min-w-0 sm:col-span-1">
+                    <p className="text-ink">{r.biomarker_name ?? r.analyte_name}</p>
+                    {r.biomarker_name && r.biomarker_name !== r.analyte_name && <p className="text-xs text-ink-2">{r.analyte_name}</p>}
+                  </div>
+                  <input
+                    aria-label={`Value for ${r.analyte_name}`}
+                    defaultValue={r.value_numeric ?? r.value_text ?? ""}
+                    onBlur={(e) => {
+                      const numeric = parseNumeric(e.target.value);
+                      updateResult(i, { value_numeric: numeric, value_text: numeric === null ? e.target.value : null });
+                    }}
+                    className={`${inputClass} tabular`}
+                  />
+                  <input aria-label={`Unit for ${r.analyte_name}`} placeholder="Unit" defaultValue={r.unit ?? ""} onBlur={(e) => updateResult(i, { unit: e.target.value || null })} className={inputClass} />
+                  <p className="col-span-2 text-ink-2 tabular sm:col-span-1">
+                    <span className="text-xs sm:hidden">Reference </span>{formatRange(r.reference_low, r.reference_high, r.reference_text) || "—"}
+                    {r.flag && r.flag !== "normal" && <span className="ml-2 text-serious-ink">{r.flag === "low" ? "▼ Low" : r.flag === "high" ? "▲ High" : "! Abnormal"}</span>}
+                  </p>
+                  <div>
+                    {r.confidence === "needs_review" ? (
+                      <button type="button" className="text-xs text-accent" onClick={() => updateResult(i, { confidence: "high" })}>Mark as checked</button>
+                    ) : (
+                      <span className="text-xs text-good-ink">✓ OK</span>
+                    )}
+                  </div>
+                  <button type="button" className="justify-self-end text-xs text-ink-2 hover:text-critical-ink" onClick={() => setResults((rows) => rows.filter((_, j) => j !== i))}>Remove</button>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

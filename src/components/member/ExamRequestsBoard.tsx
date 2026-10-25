@@ -25,7 +25,7 @@ const GROUPINGS: { by: ExamRequestGrouping; label: string }[] = [
 ];
 
 const chip = (active: boolean) =>
-  cx("rounded-full border px-3 py-1 text-xs", active ? "border-accent bg-accent-soft text-accent" : "border-border text-ink-2 hover:text-ink");
+  cx("tap rounded-full border px-3 py-1 text-xs", active ? "border-accent bg-accent-soft text-accent" : "border-border text-ink-2 hover:text-ink");
 
 /**
  * Exam requests, sorted by date, specialty, doctor or type of exam, with
@@ -118,7 +118,7 @@ export function ExamRequestsBoard(props: {
             <h2 id={`exam-section-${section.key || "none"}`} className="text-base font-semibold text-ink">
               {section.label} <span className="text-sm font-normal text-muted">{section.requests.length}</span>
             </h2>
-            <div className="grid gap-3 xl:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {section.requests.map((r) => {
                 const person = names.get(r.member_id);
                 return (
@@ -136,9 +136,9 @@ export function ExamRequestsBoard(props: {
                         </p>
                       </div>
                       <p className="flex gap-3 text-sm">
-                        <a href={`/api/documents/${r.id}/file`} target="_blank" rel="noreferrer" className="text-accent">View</a>
-                        <a href={`/api/documents/${r.id}/file?download=1`} className="text-accent">Download</a>
-                        {props.canEdit && <Link href={`/admin/documents/${r.id}`} className="text-accent">Edit</Link>}
+                        <a href={`/api/documents/${r.id}/file`} target="_blank" rel="noreferrer" className="tap text-accent">View</a>
+                        <a href={`/api/documents/${r.id}/file?download=1`} className="tap text-accent">Download</a>
+                        {props.canEdit && <Link href={`/admin/documents/${r.id}`} className="tap text-accent">Edit</Link>}
                       </p>
                     </div>
                     {r.requested_exams.length === 0 ? (

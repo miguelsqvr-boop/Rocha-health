@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Viewer } from "@/lib/auth/viewer";
 import { ActionButton } from "@/components/client/ActionButton";
+import { MobileNav } from "@/components/client/MobileNav";
 import { Avatar } from "@/components/ui";
 
 const ADMIN_NAV = [
@@ -38,7 +39,7 @@ export function AppShell({ viewer, children }: { viewer: Viewer & { member: NonN
       )}
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-ink">
+          <Link href="/" className="flex min-h-11 items-center gap-2 font-semibold text-ink">
             <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden><rect width="32" height="32" rx="8" fill="var(--accent)" /><path d="M16 24s-7-4.4-7-9.5A3.9 3.9 0 0 1 16 12a3.9 3.9 0 0 1 7 2.5C23 19.6 16 24 16 24z" fill="var(--accent-fg)" /></svg>
             <span>{viewer.familyName ? `${viewer.familyName} Health` : "Rocha Health"}</span>
           </Link>
@@ -56,7 +57,7 @@ export function AppShell({ viewer, children }: { viewer: Viewer & { member: NonN
           </div>
         </div>
         {showAdmin && (
-          <nav aria-label="Family Admin" className="mx-auto max-w-7xl overflow-x-auto px-4">
+          <nav aria-label="Family Admin" className="mx-auto hidden max-w-7xl overflow-x-auto px-4 lg:block">
             <ul className="flex gap-1 pb-2">
               {ADMIN_NAV.map((item) => (
                 <li key={item.href}>
@@ -69,7 +70,9 @@ export function AppShell({ viewer, children }: { viewer: Viewer & { member: NonN
           </nav>
         )}
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+      {/* Room for the phone navigation bar (and the home indicator) below the content. */}
+      <main className="mx-auto max-w-7xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 lg:pb-6">{children}</main>
+      {!viewer.viewAs && <MobileNav selfId={viewer.member.id} admin={showAdmin} adminLinks={ADMIN_NAV} />}
     </div>
   );
 }

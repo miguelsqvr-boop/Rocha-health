@@ -1,6 +1,6 @@
 # Handoff: where Rocha Health stands
 
-_Last updated 25 Oct 2026: exam requests, results that need attention with "Why might this be?", reference ranges on every chart the labs allow (white-cell differential in the catalogue, units merged)._
+_Last updated 25 Oct 2026: uploads up to 20 MB (browser → storage directly), Surgeries & Procedures, phone-ready (bottom navigation, Take a photo, add to home screen), exam requests, results that need attention with "Why might this be?", reference ranges on every chart the labs allow (white-cell differential in the catalogue, units merged)._
 
 Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what the app does and how to set it up).
 
