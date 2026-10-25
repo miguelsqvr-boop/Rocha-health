@@ -1,6 +1,8 @@
 // Display formatting: "12 Sep 2026". Month names are fixed rather than taken
 // from the runtime's locale data, which varies ("Sep" vs "Sept").
 
+import type { SeriesReference } from "@/lib/domain/health-summary";
+
 export const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function toDate(value: string): Date {
@@ -37,6 +39,19 @@ export function formatRange(low: number | null, high: number | null, text: strin
   if (low !== null) return `≥ ${low}`;
   if (high !== null) return `≤ ${high}`;
   return text ?? "";
+}
+
+/**
+ * A test's reference range as the result pages show it, saying where it came
+ * from when it isn't the range printed with the latest result.
+ */
+export function describeReference(ref: SeriesReference): { range: string; note: string | null } {
+  const range = formatRange(ref.low, ref.high, null);
+  if (ref.source === "lab") return { range, note: null };
+  if (ref.text) return { range: ref.text, note: null };
+  if (ref.source === "earlier") return { range, note: `from the ${formatDate(ref.fromDate)} report` };
+  if (ref.source === "typical") return { range, note: "typical adult range, not from your lab" };
+  return { range: "", note: "not printed by the lab" };
 }
 
 export function initials(name: string): string {

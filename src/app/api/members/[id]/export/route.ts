@@ -1,5 +1,6 @@
 import { ApiError, route } from "@/lib/api";
 import {
+  examRequests,
   memberDocuments,
   memberMedications,
   memberPreventiveCompletions,
@@ -27,18 +28,20 @@ export const GET = route({ mutates: false }, async ({ supabase }, _request: Requ
   });
   if (logError) throw new ApiError(403, "Export is not allowed.");
 
-  const [documents, results, medications, wellness, preventive] = await Promise.all([
+  const [documents, results, medications, wellness, preventive, requests] = await Promise.all([
     memberDocuments(supabase, id),
     memberResults(supabase, id),
     memberMedications(supabase, id),
     memberWellness(supabase, id, 3650),
     memberPreventiveCompletions(supabase, id),
+    examRequests(supabase, id),
   ]);
   const body = {
     exported_at: new Date().toISOString(),
     profile: member,
     documents: documents.map(({ storage_path: _path, ...doc }) => doc),
     lab_results: results,
+    exam_requests: requests,
     medications,
     wellness,
     preventive_care: preventive,

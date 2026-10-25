@@ -24,21 +24,51 @@ function key(name: string): string {
   return normalizeText(name.replace(/\(.*?\)/g, " ")).replace(NOISE, " ").replace(/\s+/g, " ").trim();
 }
 
+/** What is known about a printed result when matching it to the catalogue. */
+export interface ResultContext {
+  unit: string | null;
+  /** The value is a number (catalogue tests are all measured as numbers). */
+  numeric: boolean;
+  /** Sample type; the catalogue holds blood tests. Null when not stated. */
+  specimen?: string | null;
+}
+
+/**
+ * Whether a result can be this catalogue test: a number, from blood (or an
+ * unstated specimen), and a percentage exactly when the test is measured as a
+ * percentage. "Negativo" on a urine strip is not blood glucose, and the
+ * albumin % of an electrophoresis is not blood albumin in g/dL.
+ */
+export function canBe(definition: BiomarkerDefinition, result: ResultContext): boolean {
+  if (!result.numeric) return false;
+  if (result.specimen && result.specimen !== "blood") return false;
+  return isPercentUnit(definition.default_unit) === isPercentUnit(result.unit);
+}
+
 export function buildBiomarkerIndex(definitions: BiomarkerDefinition[]) {
   const byCode = new Map<string, BiomarkerDefinition>();
-  const byName = new Map<string, BiomarkerDefinition>();
+  // A printed name can stand for several tests (Neutrófilos: % and absolute).
+  const byName = new Map<string, BiomarkerDefinition[]>();
   for (const def of definitions) {
     byCode.set(def.code, def);
     for (const name of [def.name, def.code.replace(/_/g, " "), ...def.synonyms]) {
       const k = key(name);
-      if (k && !byName.has(k)) byName.set(k, def);
+      if (!k) continue;
+      const list = byName.get(k) ?? [];
+      if (!list.includes(def)) list.push(def);
+      byName.set(k, list);
     }
   }
   return {
-    /** Prefer the code the extractor proposed; fall back to the printed name. */
-    match(analyteName: string, proposedCode?: string | null): BiomarkerDefinition | null {
-      if (proposedCode && byCode.has(proposedCode)) return byCode.get(proposedCode)!;
-      return byName.get(key(analyteName)) ?? null;
+    /**
+     * Prefer the code the extractor proposed; fall back to the printed name.
+     * With a result, only a test the result can be (see canBe) is returned.
+     */
+    match(analyteName: string, proposedCode?: string | null, result?: ResultContext): BiomarkerDefinition | null {
+      const fits = (def: BiomarkerDefinition) => !result || canBe(def, result);
+      const proposed = proposedCode ? byCode.get(proposedCode) : undefined;
+      if (proposed && fits(proposed)) return proposed;
+      return (byName.get(key(analyteName)) ?? []).find(fits) ?? null;
     },
     get(code: string) {
       return byCode.get(code) ?? null;
@@ -52,6 +82,40 @@ export function normalizeUnit(unit: string | null | undefined): string {
     .replace(/μ/g, "µ")
     .replace(/\s+/g, "")
     .replace(/^mcg/, "µg");
+}
+
+// Units that labs spell differently but that give the same number.
+const SAME_UNIT: Record<string, string> = {
+  "10^3/µl": "10^9/l",
+  "/nl": "10^9/l",
+  "10^6/µl": "10^12/l",
+  "/pl": "10^12/l",
+  "µiu/ml": "miu/l",
+  "iu/l": "u/l",
+  mm: "mm/h",
+  "mm/hora": "mm/h",
+  "mm/1h": "mm/h",
+  "mm/1ªhora": "mm/h",
+  "mm/1ahora": "mm/h",
+};
+
+/**
+ * One key per unit, so "x 10^3/µl" and "10^9/L", or "µUI/mL" and "mIU/L",
+ * compare equal. Units on different scales (mg/dL and mmol/L) stay apart.
+ */
+export function unitKey(unit: string | null | undefined): string {
+  const u = normalizeUnit(unit)
+    .replace(/^[x×*]/, "")
+    .replace(/³/g, "^3").replace(/⁶/g, "^6").replace(/⁹/g, "^9").replace(/¹²/g, "^12")
+    .replace(/10e\^?(\d+)/g, "10^$1")
+    .replace(/^u(?=(iu|ui|g|mol)\/)/, "µ")
+    // Portuguese and French write UI for IU.
+    .replace(/ui/g, "iu");
+  return SAME_UNIT[u] ?? u;
+}
+
+export function isPercentUnit(unit: string | null | undefined): boolean {
+  return unitKey(unit) === "%";
 }
 
 export function computeFlag(
@@ -74,7 +138,7 @@ export function effectiveRange(
   if (result.reference_low != null || result.reference_high != null) {
     return { low: result.reference_low, high: result.reference_high };
   }
-  if (definition && normalizeUnit(definition.default_unit) === normalizeUnit(result.unit)) {
+  if (definition && unitKey(definition.default_unit) === unitKey(result.unit)) {
     return { low: definition.reference_low, high: definition.reference_high };
   }
   return { low: null, high: null };

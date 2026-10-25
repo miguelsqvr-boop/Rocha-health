@@ -1,6 +1,6 @@
 # Handoff: where Rocha Health stands
 
-_Last updated 25 Oct 2026: Word (.docx) uploads, duplicate-file refusal, document dates, Trends by category._
+_Last updated 25 Oct 2026: exam requests, results that need attention with "Why might this be?", reference ranges on every chart the labs allow (white-cell differential in the catalogue, units merged)._
 
 Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what the app does and how to set it up).
 
@@ -19,6 +19,7 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 | Project | ref `fvbcsyrmqpuyaepysruz`, URL `https://fvbcsyrmqpuyaepysruz.supabase.co`, region West EU (Ireland, `eu-west-1`). Its display name is still the default "miguelsqvr-boop's Project"; rename it under Settings → General if you like. |
 | Database | The first three migrations applied and checked on 24 Oct 2026; `20261025000100_word_documents` (accept .docx) and `20261025000200_duplicate_uploads` (one live copy of a file per family) applied on 25 Oct 2026, their functions byte-identical to the repo. The first three: a fingerprint of every function, policy, column, constraint, index, trigger, privilege, bucket and reference row matched a local build of the repo's migrations. `family_rpcs` was pasted into the SQL editor on Windows, so its 13 functions contain `\r\n` line endings; apart from that they are byte-identical. Signed-in users with no profile see only the built-in reference data; signed-out requests get "permission denied". |
 | Security advisor | Two expected notices: `wearable_credentials` has RLS with no policies (service role only, by design), and signed-in users can execute the 11 `SECURITY DEFINER` RPCs (each re-checks `auth.uid()` and permissions). Nothing reachable by `anon`. |
+| Exam requests and lab links | `20261025000300_lab_test_links` adds the white-cell differential (% and absolute) to the catalogue, unlinks 5 results linked to a test they can't be (urine-strip words, the electrophoresis albumin %) and links the existing differential results, with one audit entry per person. `20261025000400_exam_requests` adds `documents.doctor_name`/`specialty`, the `requested_exams` table (RLS, read only through `member_ids_with('read')`, written only by `confirm_document`/`update_document_details`), and extends those RPCs and `delete_document`. |
 | Migration history | Supabase lists `family_access_model`, `reference_data`, `word_documents` and `duplicate_uploads` under the timestamps they were applied (20261024…, 20261025161859, 20261025170856); `family_rpcs` isn't listed because it went through the SQL editor. Before ever using the Supabase CLI against this project, run `supabase migration repair --status reverted 20261024103817 20261024105037 20261025161859 20261025170856` and `supabase migration repair --status applied 20261003000100 20261003000200 20261003000300 20261025000100 20261025000200` so `db push` doesn't try to re-run them. |
 | Free plan | Paused after about a week with little activity (Supabase emails a warning first; resume from the dashboard), no automatic backups, 500 MB database / 1 GB files. Export records regularly, and consider moving the project to a paid organisation (Settings → General → Transfer project) once real records are in. |
 | Claude's access | The Supabase connector in Claude was authorised for the Rocha Family organisation to do this setup. Switch it back to "miguelsqvr-boop's Org" (Customize → Connectors → Supabase) before real medical records are uploaded, so Claude sessions can't reach this database. |
@@ -27,7 +28,7 @@ Read this, then `AGENTS.md` (rules for changing the code) and `README.md` (what 
 
 - **Database** (`supabase/migrations/`): schema, row-level security, audited RPCs, private storage policies, append-only audit log, reference data (categories, 44 biomarkers including Portuguese lab names, preventive-care rules).
 - **App** (Next.js 16): Family Health dashboard, Family Overview, upload wizard with wrong-person warnings, documents, members and invitations, permissions, audit log, settings, each person's My Health pages, View as, and a permission-scoped Claude assistant.
-- **Tests**: 141 SQL access checks (`npm run test:db`, run twice: once as an older Supabase project that grants new tables to API roles automatically, once as a newer one that doesn't), 31 unit tests (`npm test`), CI in `.github/workflows/ci.yml`.
+- **Tests**: 181 SQL access checks (`npm run test:db`, run twice: once as an older Supabase project that grants new tables to API roles automatically, once as a newer one that doesn't), 55 unit tests (`npm test`), CI in `.github/workflows/ci.yml`.
 
 ## Key decisions (and why)
 

@@ -9,6 +9,7 @@ const SECTIONS = [
   ["records", "Health Records"],
   ["labs", "Lab Results"],
   ["trends", "Trends"],
+  ["exam-requests", "Exam Requests"],
   ["sleep", "Sleep"],
   ["fitness", "Fitness"],
   ["body-composition", "Body Composition"],

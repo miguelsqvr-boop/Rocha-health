@@ -6,6 +6,7 @@ import { extractDocument, ExtractionError, EXTRACTION_MODEL } from "@/lib/ai/ext
 import { assessIdentity, type IdentityAssessment } from "@/lib/domain/identity";
 import { buildBiomarkerIndex, computeFlag, effectiveRange, parseNumeric, resultConfidence } from "@/lib/domain/biomarkers";
 import { categoryForType, isDocumentType } from "@/lib/domain/taxonomy";
+import { isExamType, isSpecialty } from "@/lib/domain/exams";
 import { listBiomarkers, listMembers } from "@/lib/data/queries";
 import { DOCUMENT_COLUMNS, type DocumentRow, type MemberRow } from "@/lib/data/types";
 import type { DocumentReview, ReviewResult, StoredExtraction } from "./review";
@@ -81,8 +82,8 @@ export async function processDocument(supabase: ServerSupabase, viewer: Viewer, 
     const index = buildBiomarkerIndex(biomarkers);
     const documentDate = isoOrNull(extraction.document_date);
     const results: ReviewResult[] = extraction.results.map((r) => {
-      const definition = index.match(r.analyte_name, r.biomarker_code);
       const value = parseNumeric(r.value);
+      const definition = index.match(r.analyte_name, r.biomarker_code, { unit: r.unit, numeric: value !== null, specimen: r.specimen });
       const range = effectiveRange(
         { reference_low: r.reference_low, reference_high: r.reference_high, unit: r.unit },
         definition,
@@ -124,6 +125,15 @@ export async function processDocument(supabase: ServerSupabase, viewer: Viewer, 
       patient_name: extraction.patient_name,
       patient_date_of_birth: isoOrNull(extraction.patient_date_of_birth),
       results,
+      doctor_name: extraction.doctor_name?.trim().slice(0, 120) || null,
+      specialty: isSpecialty(extraction.specialty) ? extraction.specialty : null,
+      requested_exams: extraction.requested_exams
+        .filter((e) => e.name.trim())
+        .map((e) => ({
+          exam_name: e.name.trim().slice(0, 200),
+          exam_type: isExamType(e.exam_type) ? e.exam_type : "other",
+          body_site: e.body_site?.trim().slice(0, 120) || null,
+        })),
     };
     const documentType = isDocumentType(extraction.document_type) ? extraction.document_type : "other";
 

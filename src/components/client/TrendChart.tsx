@@ -15,6 +15,13 @@ interface Props {
   points: TrendPoint[];
   low?: number | null;
   high?: number | null;
+  /** Legend text for the band, e.g. "Reference range (Feb 2021 report)". */
+  rangeLabel?: string;
+  /**
+   * lab: a range a lab printed for this test; points outside it are marked.
+   * typical: a general guide (not from a lab); drawn lighter, marks nothing.
+   */
+  rangeKind?: "lab" | "typical";
   height?: number;
 }
 
@@ -34,9 +41,10 @@ function niceTicks(min: number, max: number, count = 4): number[] {
  * One person's values for one measure over time. Single series, so no legend:
  * the title names it. The lab's reference range is a background band; points
  * outside it are marked and labelled in the tooltip (never colour alone).
- * Every value is also in the table under the chart.
+ * A typical range (not from a lab) is a lighter, outlined band that marks
+ * nothing. Every value is also in the table under the chart.
  */
-export function TrendChart({ title, unit, points, low = null, high = null, height = 200 }: Props) {
+export function TrendChart({ title, unit, points, low = null, high = null, rangeLabel = "Reference range", rangeKind = "lab", height = 200 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(560);
   const [hover, setHover] = useState<number | null>(null);
@@ -71,7 +79,8 @@ export function TrendChart({ title, unit, points, low = null, high = null, heigh
   const yTicks = niceTicks(yMin, yMax);
   const xTicks = data.length <= 4 ? data.map((d) => d.date) : [data[0].date, data[Math.floor(data.length / 2)].date, data.at(-1)!.date];
   const path = data.map((p, i) => `${i ? "L" : "M"}${x(p.date).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
-  const outOfRange = (v: number) => (low !== null && v < low) || (high !== null && v > high);
+  const typical = rangeKind === "typical";
+  const outOfRange = (v: number) => !typical && ((low !== null && v < low) || (high !== null && v > high));
 
   function onMove(event: React.PointerEvent<SVGRectElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -90,8 +99,12 @@ export function TrendChart({ title, unit, points, low = null, high = null, heigh
         <span className="text-sm font-medium text-ink">{title}{unit && <span className="font-normal text-ink-2"> · {unit}</span>}</span>
         {(low !== null || high !== null) && (
           <span className="flex items-center gap-1 text-xs text-ink-2">
-            <span aria-hidden className="inline-block h-2.5 w-4 rounded-sm" style={{ background: "var(--band)" }} />
-            Reference range
+            <span
+              aria-hidden
+              className="inline-block h-2.5 w-4 rounded-sm"
+              style={typical ? { background: "var(--band)", opacity: 0.5, outline: "1px dashed var(--muted)" } : { background: "var(--band)" }}
+            />
+            {rangeLabel}
           </span>
         )}
       </figcaption>
@@ -99,7 +112,11 @@ export function TrendChart({ title, unit, points, low = null, high = null, heigh
         <svg width={width} height={height} role="img" aria-labelledby={titleId} className="block max-w-full">
           <g transform={`translate(${pad.left},${pad.top})`}>
             {(low !== null || high !== null) && (
-              <rect x={0} width={innerW} y={y(high ?? yMax)} height={Math.max(0, y(low ?? yMin) - y(high ?? yMax))} fill="var(--band)" />
+              <rect
+                x={0} width={innerW} y={y(high ?? yMax)} height={Math.max(0, y(low ?? yMin) - y(high ?? yMax))}
+                fill="var(--band)" fillOpacity={typical ? 0.5 : 1}
+                stroke={typical ? "var(--muted)" : "none"} strokeDasharray={typical ? "4 3" : undefined}
+              />
             )}
             {yTicks.map((t) => (
               <g key={t}>

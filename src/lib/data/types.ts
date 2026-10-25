@@ -43,6 +43,8 @@ export interface DocumentRow {
   title: string | null;
   document_date: string | null;
   provider: string | null;
+  doctor_name: string | null;
+  specialty: string | null;
   filing_path: string[];
   extracted_patient_name: string | null;
   extracted_date_of_birth: string | null;
@@ -54,7 +56,30 @@ export interface DocumentRow {
 }
 
 export const DOCUMENT_COLUMNS =
-  "id, family_id, member_id, uploaded_by, uploaded_by_name, status, original_filename, mime_type, size_bytes, storage_path, document_type, category, title, document_date, provider, filing_path, extracted_patient_name, extracted_date_of_birth, identity_status, identity_confirmed_by, processing_error, filed_at, created_at";
+  "id, family_id, member_id, uploaded_by, uploaded_by_name, status, original_filename, mime_type, size_bytes, storage_path, document_type, category, title, document_date, provider, doctor_name, specialty, filing_path, extracted_patient_name, extracted_date_of_birth, identity_status, identity_confirmed_by, processing_error, filed_at, created_at";
+
+export interface RequestedExamRow {
+  id: string;
+  exam_name: string;
+  exam_type: string;
+  body_site: string | null;
+  sort_order: number;
+}
+
+/** A filed exam request and the exams it asks for. */
+export interface ExamRequestRow {
+  id: string;
+  member_id: string;
+  title: string | null;
+  document_date: string | null;
+  provider: string | null;
+  doctor_name: string | null;
+  specialty: string | null;
+  requested_exams: RequestedExamRow[];
+}
+
+export const EXAM_REQUEST_COLUMNS =
+  "id, member_id, title, document_date, provider, doctor_name, specialty, requested_exams(id, exam_name, exam_type, body_site, sort_order)";
 
 export interface ResultRow {
   id: string;
@@ -71,11 +96,18 @@ export interface ResultRow {
   reference_text: string | null;
   flag: "low" | "normal" | "high" | "abnormal" | null;
   confidence: "high" | "needs_review";
-  biomarker: { code: string; name: string; category: string } | null;
+  biomarker: {
+    code: string;
+    name: string;
+    category: string;
+    default_unit: string | null;
+    reference_low: number | null;
+    reference_high: number | null;
+  } | null;
 }
 
 export const RESULT_COLUMNS =
-  "id, member_id, biomarker_id, analyte_name, source_document_id, result_date, value_numeric, value_text, unit, reference_low, reference_high, reference_text, flag, confidence, biomarker:biomarkers(code, name, category)";
+  "id, member_id, biomarker_id, analyte_name, source_document_id, result_date, value_numeric, value_text, unit, reference_low, reference_high, reference_text, flag, confidence, biomarker:biomarkers(code, name, category, default_unit, reference_low, reference_high)";
 
 export interface MedicationRow {
   id: string;

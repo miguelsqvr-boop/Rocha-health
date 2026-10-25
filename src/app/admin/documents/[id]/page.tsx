@@ -50,6 +50,11 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   }
 
   const results = (await memberResults(supabase, doc.member_id!)).filter((r) => r.source_document_id === doc.id);
+  const { data: exams } = await supabase
+    .from("requested_exams")
+    .select("exam_name, exam_type, body_site")
+    .eq("source_document_id", doc.id)
+    .order("sort_order");
   return (
     <>
       <PageHeader
@@ -66,7 +71,10 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card title="Details" className="lg:col-span-2">
-          <DetailsEditor documentId={doc.id} documentType={doc.document_type} title={doc.title} documentDate={doc.document_date} provider={doc.provider} />
+          <DetailsEditor
+            documentId={doc.id} documentType={doc.document_type} title={doc.title} documentDate={doc.document_date} provider={doc.provider}
+            doctorName={doc.doctor_name} specialty={doc.specialty} requestedExams={exams ?? []}
+          />
         </Card>
         <Card title="Identity">
           <dl className="space-y-2 text-sm">

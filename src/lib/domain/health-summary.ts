@@ -2,6 +2,8 @@
 // wellness data. These describe one person's own trend over time. They are
 // never used to compare or rank family members.
 
+import { computeFlag, unitKey } from "./biomarkers";
+
 export interface ResultPoint {
   biomarker_code: string | null;
   analyte_name: string;
@@ -34,9 +36,16 @@ export interface LabResultLike {
   biomarker: { code: string; name: string; category: string } | null;
 }
 
-/** One key per test: the catalogue code, or the printed name ignoring case. */
-export function resultKey(r: Pick<LabResultLike, "analyte_name" | "biomarker">): string {
-  return r.biomarker?.code ?? r.analyte_name.trim().toLowerCase();
+/**
+ * One key per test and unit: the catalogue code (or the printed name ignoring
+ * case) plus the unit, with equivalent spellings merged ("x10^3/µl" and
+ * "10^9/L"). A test reported both as a percentage and an absolute count, or
+ * in mg/dL and mmol/L, is two series rather than one mixed chart.
+ */
+export function resultKey(r: Pick<LabResultLike, "analyte_name" | "biomarker" | "unit">): string {
+  const test = r.biomarker?.code ?? r.analyte_name.trim().toLowerCase().replace(/\s+/g, " ");
+  const unit = unitKey(r.unit);
+  return unit ? `${test}|${unit}` : test;
 }
 
 export interface TrendSeries<R> {
@@ -44,8 +53,6 @@ export interface TrendSeries<R> {
   name: string;
   unit: string | null;
   rows: R[];
-  /** Results for this test recorded in another unit, left out of the chart. */
-  otherUnits: number;
 }
 
 export interface TrendGroup<R> {
@@ -57,7 +64,7 @@ export interface TrendGroup<R> {
 /**
  * Charts for one person's numeric results, grouped by category in a fixed
  * order (tests outside the catalogue go under "Other results"). One series
- * per test, in the unit of its most recent result. Expects newest first.
+ * per test and unit (see resultKey). Expects newest first.
  */
 export function trendGroups<R extends LabResultLike>(results: R[]): TrendGroup<R>[] {
   const series = new Map<string, TrendSeries<R> & { category: string }>();
@@ -67,11 +74,10 @@ export function trendGroups<R extends LabResultLike>(results: R[]): TrendGroup<R
     let entry = series.get(key);
     if (!entry) {
       const category = LAB_DOMAINS.some((d) => d.code === r.biomarker?.category) ? r.biomarker!.category : "other";
-      entry = { key, name: r.biomarker?.name ?? r.analyte_name.trim(), unit: r.unit, rows: [], otherUnits: 0, category };
+      entry = { key, name: r.biomarker?.name ?? r.analyte_name.trim(), unit: r.unit, rows: [], category };
       series.set(key, entry);
     }
-    if (entry.unit === r.unit) entry.rows.push(r);
-    else entry.otherUnits += 1;
+    entry.rows.push(r);
   }
   return [...LAB_DOMAINS, { code: "other", label: "Other results" }]
     .map((d) => ({
@@ -79,10 +85,107 @@ export function trendGroups<R extends LabResultLike>(results: R[]): TrendGroup<R
       label: d.label,
       series: [...series.values()]
         .filter((s) => s.category === d.code)
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => a.name.localeCompare(b.name) || (a.unit ?? "").localeCompare(b.unit ?? ""))
         .map(({ category: _category, ...rest }) => rest),
     }))
     .filter((g) => g.series.length > 0);
+}
+
+/** What the result pages know about a stored result's reference range. */
+export interface RangedResult {
+  result_date: string;
+  unit: string | null;
+  reference_low: number | null;
+  reference_high: number | null;
+  reference_text: string | null;
+}
+
+export interface SeriesReference {
+  low: number | null;
+  high: number | null;
+  /**
+   * lab: printed with the latest result. earlier: printed for the same test
+   * on an earlier report (fromDate). typical: the catalogue's typical adult
+   * range, because no report printed one. null: no range to draw.
+   */
+  source: "lab" | "earlier" | "typical" | null;
+  fromDate: string | null;
+  /** The latest result's range when the lab printed it only as text (risk levels, time of day). */
+  text: string | null;
+}
+
+const hasRange = (r: RangedResult) => r.reference_low != null || r.reference_high != null;
+
+/**
+ * The reference range to show for one test, from one person's own results
+ * (newest first, one unit). The lab's range always wins; a range from an
+ * earlier report of the same test comes next, because labs often print it on
+ * only one of a test's two lines. The catalogue's typical range is used only
+ * for adults and only in its own unit: adult ranges don't apply to children.
+ */
+export function seriesReference(
+  rows: RangedResult[],
+  definition: { default_unit: string | null; reference_low: number | null; reference_high: number | null } | null,
+  options: { adult: boolean },
+): SeriesReference {
+  const latest = rows[0];
+  const none: SeriesReference = { low: null, high: null, source: null, fromDate: null, text: null };
+  if (!latest) return none;
+  if (hasRange(latest)) return { ...none, low: latest.reference_low, high: latest.reference_high, source: "lab" };
+  const text = latest.reference_text?.trim() || null;
+  const earlier = rows.find(hasRange);
+  if (earlier) return { low: earlier.reference_low, high: earlier.reference_high, source: "earlier", fromDate: earlier.result_date, text };
+  if (
+    options.adult && definition &&
+    (definition.reference_low != null || definition.reference_high != null) &&
+    unitKey(definition.default_unit) === unitKey(latest.unit)
+  ) {
+    return { low: definition.reference_low, high: definition.reference_high, source: "typical", fromDate: null, text };
+  }
+  return { ...none, text };
+}
+
+/**
+ * far: at least twice the upper limit, or at most half the lower limit.
+ * outside: outside the range, by less. abnormal: a result the lab marked
+ * abnormal that has no number to compare (e.g. a positive culture).
+ */
+export type AttentionLevel = "far" | "outside" | "abnormal";
+
+export interface AttentionItem<R> {
+  result: R;
+  level: AttentionLevel;
+  direction: "high" | "low" | null;
+}
+
+const LEVEL_ORDER: Record<AttentionLevel, number> = { far: 0, abnormal: 1, outside: 2 };
+
+/**
+ * One person's results that need attention: for each test (and unit), its
+ * latest result when that is outside the reference range or marked abnormal.
+ * A test that was out of range but has since come back in range is not
+ * listed. Furthest out first, then newest. Expects newest first.
+ */
+export function needsAttention<R extends LabResultLike & RangedResult & { flag: string | null }>(results: R[]): AttentionItem<R>[] {
+  const seen = new Set<string>();
+  const items: AttentionItem<R>[] = [];
+  for (const r of results) {
+    const key = resultKey(r);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const value = r.value_numeric === null ? null : Number(r.value_numeric);
+    const flag = r.flag ?? computeFlag(value, r.reference_low, r.reference_high);
+    if (!flag || flag === "normal") continue;
+    if (flag === "abnormal" || value === null) {
+      items.push({ result: r, level: "abnormal", direction: null });
+      continue;
+    }
+    const far = flag === "high"
+      ? r.reference_high != null && r.reference_high > 0 && value >= 2 * r.reference_high
+      : r.reference_low != null && r.reference_low > 0 && value <= r.reference_low / 2;
+    items.push({ result: r, level: far ? "far" : "outside", direction: flag === "low" ? "low" : "high" });
+  }
+  return items.sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level] || b.result.result_date.localeCompare(a.result.result_date));
 }
 
 /** How far a value sits outside its range, relative to the range edge (0 = inside). */

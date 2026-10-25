@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { DocumentReview, ReviewResult } from "@/lib/documents/review";
+import type { DocumentReview, ReviewRequestedExam, ReviewResult } from "@/lib/documents/review";
 import { describeCheck } from "@/lib/domain/identity";
 import { buildFilingPath, DOCUMENT_TYPE_CODES, DOCUMENT_TYPES, documentTypeInfo } from "@/lib/domain/taxonomy";
 import { parseNumeric } from "@/lib/domain/biomarkers";
@@ -9,12 +9,13 @@ import { formatDate, formatRange } from "@/lib/format";
 import { isFutureDate } from "@/lib/validation";
 import { buttonClass, inputClass } from "@/components/ui";
 import { callApi } from "./api";
+import { DoctorFields, ExamListEditor, cleanExams } from "./ExamFields";
 
 interface Props {
   review: DocumentReview;
   /** Member chosen in "Who is this for?" (null = let AI identify). */
   selectedMemberId: string | null;
-  onSaved: (summary: { memberName: string; title: string }) => void;
+  onSaved: (summary: { memberName: string; title: string; outOfRange: number }) => void;
   onCancelled?: () => void;
 }
 
@@ -36,6 +37,10 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
   const [title, setTitle] = useState(review.title ?? documentTypeInfo(review.document_type).label);
   const [documentDate, setDocumentDate] = useState(review.document_date ?? "");
   const [provider, setProvider] = useState(review.provider ?? "");
+  const [doctorName, setDoctorName] = useState(extraction?.doctor_name ?? "");
+  const [specialty, setSpecialty] = useState(extraction?.specialty ?? "");
+  const [exams, setExams] = useState<ReviewRequestedExam[]>(extraction?.requested_exams ?? []);
+  const isExamRequest = documentType === "exam_request";
   const [results, setResults] = useState<ReviewResult[]>(() =>
     [...(extraction?.results ?? [])].sort((a, b) => Number(b.confidence === "needs_review") - Number(a.confidence === "needs_review")),
   );
@@ -67,9 +72,15 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
       documentDate: documentDate || null,
       provider: provider.trim() || null,
       results,
+      doctorName: doctorName.trim() || null,
+      specialty: specialty || null,
+      requestedExams: isExamRequest ? cleanExams(exams) : [],
     });
     setSaving(false);
-    if (result.ok) return onSaved({ memberName: nameOf(targetId)?.display_name ?? "", title });
+    if (result.ok) {
+      const outOfRange = results.filter((r) => r.flag && r.flag !== "normal").length;
+      return onSaved({ memberName: nameOf(targetId)?.display_name ?? "", title, outOfRange });
+    }
     if (result.status === 409 && result.data.detail?.code === "identity_confirmation_required") {
       setError("Please confirm who this document belongs to before saving.");
     } else {
@@ -185,12 +196,22 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
           <span className="mb-1 block text-ink-2">Laboratory / provider</span>
           <input value={provider} onChange={(e) => setProvider(e.target.value)} className={inputClass} />
         </label>
+        <DoctorFields
+          doctorName={doctorName}
+          specialty={specialty}
+          onChange={(patch) => {
+            if (patch.doctorName !== undefined) setDoctorName(patch.doctorName);
+            if (patch.specialty !== undefined) setSpecialty(patch.specialty);
+          }}
+        />
       </div>
       {dateProblem && <p role="alert" className="text-sm text-serious-ink">{dateProblem}</p>}
       <p className="text-sm text-ink-2">
         Will be filed as: <span className="text-ink">{[selected?.display_name ?? "…", ...filing].join(" → ")}</span>
       </p>
       {extraction?.summary && <p className="text-sm text-ink-2">{extraction.summary}</p>}
+
+      {isExamRequest && <ExamListEditor exams={exams} onChange={setExams} />}
 
       {/* Results */}
       {results.length > 0 && (

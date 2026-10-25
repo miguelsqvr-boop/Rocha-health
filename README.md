@@ -51,6 +51,8 @@ Append-only (no API role can write to it; an update or delete raises an error ev
 
 The assistant has tools (lab results, documents, overview, wellness) that resolve people only from the rows RLS returns for the person asking, and query with that person's own session. If Santi asks for Miguel's blood test, the tool answers "permission denied" and the assistant says so without revealing whether records exist. The Super Admin's assistant can use the whole family's data. During View as it is limited to the viewed member. Each person whose records it reads is audited.
 
+**Why might this be?** Under a result outside its range, a button asks Claude for general information: common causes, symptoms, what doctors usually do, warning signs that need prompt care, and questions for the doctor. Only that result, the person's age and sex and their earlier values for the same test are sent (no name), with the viewer's own session; it is audited like an assistant query and says plainly that it is not a diagnosis.
+
 ### Future sharing
 
 `member_access_grants` already supports view-only, upload-only and full access, expiry (temporary access) and caregiver or doctor relationships, and the access function honours them. For now no UI creates grants: there are two roles, Super Admin and family member.
@@ -63,17 +65,18 @@ The assistant has tools (lab results, documents, overview, wellness) that resolv
 2. By default each document is filed under the person it names: the printed patient name and date of birth are matched against every profile. You can choose a person up front instead (*Who is this for?*); the name is still checked against them.
 3. Drop one or many PDFs, Word documents (.docx) or photos (up to 20 MB each). Word files are read from their text and tables; the old .doc format and password-protected Word files can't be read and are refused before upload, with instructions to remove the password or save as PDF.
 4. Each file is fingerprinted (SHA-256). A file the family already has (not deleted) is refused, saying where the original is; a member only gets details about documents they can see. Otherwise it is stored privately and read by Claude
-5. Patient, document type, date, provider, results and biomarkers are identified. Results are matched to biomarker definitions (including Portuguese lab names) and flagged against the lab's reference range.
+5. Patient, document type, date, provider, doctor and specialty, results and biomarkers are identified. Results are matched to biomarker definitions (including Portuguese lab names) only when they can be that test: a number, from blood, and a percentage only for a test measured in % (a urine strip's "Negativo" is not blood glucose). Each result keeps the range printed on its own line, and is flagged against it. An **exam request** (requisição de exames) has no results: each requested exam is listed with its type (blood test, ultrasound, MRI, ECG, …).
 6. *Ready to Save*: `Santi — Blood Test — 8 Sep 2026 · 4 results found · 3 high confidence · 1 needs review`
 7. Confirm (or fix values, the date, or the person). Records are dated by the document's own date (sample collection or report date), never the upload date; saving is blocked until there is one.
 8. Stored, filed (`Santi → Health Records → Laboratory → Blood Tests → 2026 → September`), added to the timeline, charts and dashboards, and searchable.
 
 ## Screens
 
-- **Family Health** (`/admin`): each person's latest record and area statuses (Cardiovascular, Metabolic, Sleep, Fitness), each compared only with their own history.
+- **Family Health** (`/admin`): results that need attention for each person (their latest results outside the lab's range, furthest out first), then each person's latest record and area statuses (Cardiovascular, Metabolic, Sleep, Fitness), each compared only with their own history.
+- **Exam Requests** (`/admin/exam-requests`, and per person under My Health): exams the doctors have asked for, organised by date, specialty, doctor or exam type, with filters for each.
 - **Family Overview** (`/admin/overview`): who has recent data, what is missing, recent uploads, upcoming preventive care, completeness and recent activity. No ranking, no "best/worst".
 - **Documents**, **Members**, **Permissions**, **Audit Log**, **Settings** (categories, biomarkers, preventive-care rules, integrations).
-- **My Health** (`/m/<member>`): Overview, Health Records, Lab Results, Trends, Sleep, Fitness, Body Composition, Medications, Supplements, Preventive Care, Longevity, Documents, Assistant, Settings. The same pages serve the member, the Super Admin opening a profile, and View as.
+- **My Health** (`/m/<member>`): Overview (with *Needs attention* at the top), Health Records, Lab Results, Trends (one chart per test and unit; the band is the lab's range, else the range from an earlier report of the same test, else a typical adult range for adults, always labelled), Exam Requests, Sleep, Fitness, Body Composition, Medications, Supplements, Preventive Care, Longevity, Documents, Assistant, Settings. The same pages serve the member, the Super Admin opening a profile, and View as.
 
 ---
 

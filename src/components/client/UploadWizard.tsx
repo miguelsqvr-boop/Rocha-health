@@ -139,8 +139,9 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
                   <ReviewForm
                     review={item.review}
                     selectedMemberId={target === "auto" ? null : target}
-                    onSaved={({ memberName, title }) => {
-                      update(item.key, { key: item.key, file: item.file, state: "saved", documentId: item.documentId, summary: `${memberName} — ${title}` });
+                    onSaved={({ memberName, title, outOfRange }) => {
+                      const flagged = outOfRange === 0 ? "" : ` · ⚠ ${outOfRange} result${outOfRange === 1 ? "" : "s"} outside the reference range`;
+                      update(item.key, { key: item.key, file: item.file, state: "saved", documentId: item.documentId, summary: `${memberName} — ${title}${flagged}` });
                       setOpenKey(null);
                       router.refresh();
                     }}

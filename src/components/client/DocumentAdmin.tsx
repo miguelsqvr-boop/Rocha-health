@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { DocumentReview } from "@/lib/documents/review";
+import type { DocumentReview, ReviewRequestedExam } from "@/lib/documents/review";
 import type { IdentityAssessment } from "@/lib/domain/identity";
 import { describeCheck } from "@/lib/domain/identity";
 import { DOCUMENT_TYPE_CODES, DOCUMENT_TYPES } from "@/lib/domain/taxonomy";
@@ -10,6 +10,7 @@ import { parseNumeric } from "@/lib/domain/biomarkers";
 import { buttonClass, inputClass } from "@/components/ui";
 import { callApi } from "./api";
 import { ReviewForm } from "./ReviewForm";
+import { DoctorFields, ExamListEditor, cleanExams } from "./ExamFields";
 
 export function ReviewPanel({ review, donePath }: { review: DocumentReview; donePath: string }) {
   const router = useRouter();
@@ -23,14 +24,27 @@ export function ReviewPanel({ review, donePath }: { review: DocumentReview; done
   );
 }
 
-export function DetailsEditor(props: { documentId: string; documentType: string | null; title: string | null; documentDate: string | null; provider: string | null }) {
+export function DetailsEditor(props: {
+  documentId: string;
+  documentType: string | null;
+  title: string | null;
+  documentDate: string | null;
+  provider: string | null;
+  doctorName: string | null;
+  specialty: string | null;
+  requestedExams: ReviewRequestedExam[];
+}) {
   const router = useRouter();
   const [form, setForm] = useState({
     documentType: props.documentType ?? "other",
     title: props.title ?? "",
     documentDate: props.documentDate ?? "",
     provider: props.provider ?? "",
+    doctorName: props.doctorName ?? "",
+    specialty: props.specialty ?? "",
   });
+  const [exams, setExams] = useState(props.requestedExams);
+  const isExamRequest = form.documentType === "exam_request";
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function save(event: React.FormEvent) {
@@ -40,6 +54,9 @@ export function DetailsEditor(props: { documentId: string; documentType: string 
       title: form.title || DOCUMENT_TYPES[form.documentType as keyof typeof DOCUMENT_TYPES]?.label || "Document",
       documentDate: form.documentDate || null,
       provider: form.provider || null,
+      doctorName: form.doctorName.trim() || null,
+      specialty: form.specialty || null,
+      ...(isExamRequest ? { requestedExams: cleanExams(exams) } : {}),
     });
     setMessage(result.ok ? { ok: true, text: "Saved. The document has been re-filed." } : { ok: false, text: result.data.error ?? "Could not save." });
     if (result.ok) router.refresh();
@@ -61,6 +78,8 @@ export function DetailsEditor(props: { documentId: string; documentType: string 
       <label className="text-sm"><span className="mb-1 block text-ink-2">Laboratory / provider</span>
         <input value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })} className={inputClass} />
       </label>
+      <DoctorFields doctorName={form.doctorName} specialty={form.specialty} onChange={(patch) => setForm({ ...form, ...patch })} />
+      {isExamRequest && <div className="sm:col-span-2"><ExamListEditor exams={exams} onChange={setExams} /></div>}
       <div className="sm:col-span-2 flex items-center gap-3">
         <button className={buttonClass.secondary}>Save details</button>
         {message && <span role="status" className={message.ok ? "text-sm text-good-ink" : "text-sm text-critical-ink"}>{message.text}</span>}
