@@ -60,12 +60,12 @@ The assistant has tools (lab results, documents, overview, wellness) that resolv
 ## Upload workflow
 
 1. **+ Upload Health Document**
-2. *Who is this for?* Large family-member cards, or **Let AI identify automatically**
+2. By default each document is filed under the person it names: the printed patient name and date of birth are matched against every profile. You can choose a person up front instead (*Who is this for?*); the name is still checked against them.
 3. Drop one or many PDFs or photos (up to 20 MB each)
 4. Each file is stored privately and read by Claude
 5. Patient, document type, date, provider, results and biomarkers are identified. Results are matched to biomarker definitions (including Portuguese lab names) and flagged against the lab's reference range.
 6. *Ready to Save*: `Santi — Blood Test — 8 Sep 2026 · 4 results found · 3 high confidence · 1 needs review`
-7. Confirm (or fix values, the date, or the person)
+7. Confirm (or fix values, the date, or the person). Records are dated by the document's own date (sample collection or report date), never the upload date; saving is blocked until there is one.
 8. Stored, filed (`Santi → Health Records → Laboratory → Blood Tests → 2026 → September`), added to the timeline, charts and dashboards, and searchable.
 
 ## Screens

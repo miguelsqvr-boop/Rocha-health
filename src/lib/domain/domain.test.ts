@@ -6,6 +6,7 @@ import { addMonths, ageOn, preventiveItems, type PreventiveRule } from "./preven
 import { completeness } from "./completeness";
 import { accessSummary, canAccessMember } from "./permissions";
 import { formatDate } from "@/lib/format";
+import { isFutureDate } from "@/lib/validation";
 
 describe("filing", () => {
   it("files the spec example under Laboratory → Blood Tests → 2026 → September", () => {
@@ -190,5 +191,18 @@ describe("trends by category", () => {
 
   it("returns nothing to chart when there are no numeric results", () => {
     expect(trendGroups([row("2026-09-01", null, null, ldl)])).toEqual([]);
+  });
+});
+
+describe("document dates", () => {
+  const now = new Date("2026-10-25T23:30:00Z"); // already 26 Oct in some time zones
+  it("accepts past dates and today, wherever the uploader is", () => {
+    expect(isFutureDate("2024-08-30", now)).toBe(false);
+    expect(isFutureDate("2026-10-25", now)).toBe(false);
+    expect(isFutureDate("2026-10-26", now)).toBe(false);
+  });
+  it("rejects dates after tomorrow", () => {
+    expect(isFutureDate("2026-10-28", now)).toBe(true);
+    expect(isFutureDate("2027-01-01", now)).toBe(true);
   });
 });

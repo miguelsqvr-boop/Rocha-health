@@ -44,7 +44,7 @@ The family files documents from many countries and languages (often Portuguese).
 
 Patient identity matters: the app uses patient_name and patient_date_of_birth to make sure a document is filed under the right family member. Copy them exactly as printed. If they are not on the document, return null rather than guessing.
 
-Dates: return YYYY-MM-DD. Portuguese and European documents write dates day-first (12/09/2026 is 12 September 2026).
+Dates: return YYYY-MM-DD. Portuguese and European documents write dates day-first (12/09/2026 is 12 September 2026). document_date is the date the document itself records: the sample collection or exam date, otherwise the report or issue date. Never use today's date or guess one; return null if no date is printed.
 
 Results: include every measured test value (blood, urine, ECG measurements, body composition, etc.). Keep values exactly as printed in "value". Use biomarker_code only when the test clearly is one of the catalogue entries; otherwise null. Copy the reference range and split it into reference_low / reference_high when it is numeric. Set confident=false for anything hard to read.
 

@@ -6,6 +6,7 @@ import { describeCheck } from "@/lib/domain/identity";
 import { buildFilingPath, DOCUMENT_TYPE_CODES, DOCUMENT_TYPES, documentTypeInfo } from "@/lib/domain/taxonomy";
 import { parseNumeric } from "@/lib/domain/biomarkers";
 import { formatDate, formatRange } from "@/lib/format";
+import { isFutureDate } from "@/lib/validation";
 import { buttonClass, inputClass } from "@/components/ui";
 import { callApi } from "./api";
 
@@ -47,8 +48,15 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
   const suggested = identity?.suggested_member_id && identity.suggested_member_id !== memberId ? nameOf(identity.suggested_member_id) : undefined;
   const needsReview = results.filter((r) => r.confidence === "needs_review").length;
   const filing = useMemo(() => buildFilingPath(documentType, documentDate || null), [documentType, documentDate]);
+  // Records are dated by the document itself, never by when it was uploaded.
+  const dateProblem = !documentDate
+    ? "Enter the date printed on the document (sample collection or report date). Its results are dated with it."
+    : isFutureDate(documentDate)
+      ? "The document's date can't be in the future."
+      : null;
 
   async function save(targetId: string, acknowledge: boolean) {
+    if (dateProblem) return setError(dateProblem);
     setSaving(true);
     setError(null);
     const result = await callApi("POST", `/api/documents/${review.id}/confirm`, {
@@ -170,14 +178,15 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
           <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-ink-2">Date</span>
-          <input type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} className={inputClass} />
+          <span className="mb-1 block text-ink-2">Date on the document</span>
+          <input type="date" required value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} aria-invalid={Boolean(dateProblem)} className={inputClass} />
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-ink-2">Laboratory / provider</span>
           <input value={provider} onChange={(e) => setProvider(e.target.value)} className={inputClass} />
         </label>
       </div>
+      {dateProblem && <p role="alert" className="text-sm text-serious-ink">{dateProblem}</p>}
       <p className="text-sm text-ink-2">
         Will be filed as: <span className="text-ink">{[selected?.display_name ?? "…", ...filing].join(" → ")}</span>
       </p>
@@ -249,7 +258,7 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={saving || !memberId || (status !== "match" && !acknowledged)}
+          disabled={saving || !memberId || Boolean(dateProblem) || (status !== "match" && !acknowledged)}
           className={buttonClass.primary}
           onClick={() => memberId && save(memberId, status !== "match")}
         >

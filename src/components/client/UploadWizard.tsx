@@ -32,7 +32,9 @@ const MAX_BYTES = 20 * 1024 * 1024;
  */
 export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewPath }: { members: MemberCard[]; allowAuto: boolean; lockedMemberId?: string; manualReviewPath?: string }) {
   const router = useRouter();
-  const [target, setTarget] = useState<string | "auto" | null>(lockedMemberId ?? null);
+  // By default every document is filed under the person it names (name and
+  // date of birth); choosing a person up front is the exception.
+  const [target, setTarget] = useState<string | "auto" | null>(lockedMemberId ?? (allowAuto ? "auto" : null));
   const [items, setItems] = useState<Item[]>([]);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -76,7 +78,7 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
     await Promise.all([worker(), worker()]);
   }
 
-  const selectedName = target === "auto" ? "Let AI identify" : members.find((m) => m.id === target)?.display_name;
+  const selectedName = target === "auto" ? "the person named on each document" : members.find((m) => m.id === target)?.display_name;
   const active = items.filter((i) => i.state !== "removed");
 
   if (!target) {
@@ -107,7 +109,7 @@ export function UploadWizard({ members, allowAuto, lockedMemberId, manualReviewP
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-ink-2">Uploading for <strong className="text-ink">{selectedName}</strong></p>
         {!lockedMemberId && active.length === 0 && (
-          <button type="button" className="text-sm text-accent" onClick={() => setTarget(null)}>Change</button>
+          <button type="button" className="text-sm text-accent" onClick={() => setTarget(null)}>{target === "auto" ? "Choose a person instead" : "Change"}</button>
         )}
       </div>
 
