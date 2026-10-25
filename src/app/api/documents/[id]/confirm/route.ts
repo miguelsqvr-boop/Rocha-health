@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { json, readJson, route, throwIfDbError } from "@/lib/api";
+import { ApiError, json, readJson, route, throwIfDbError } from "@/lib/api";
 import { categoryLabels } from "@/lib/data/queries";
 import { buildFilingPath, categoryForType, DOCUMENT_TYPE_CODES } from "@/lib/domain/taxonomy";
+import { isFutureDate } from "@/lib/validation";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -37,6 +38,9 @@ const ConfirmInput = z.object({
 export const POST = route({ mutates: true }, async ({ supabase }, request: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   const input = await readJson(request, (v) => ConfirmInput.parse(v));
+  // Records are dated by the document itself, never by when it was uploaded.
+  if (!input.documentDate) throw new ApiError(400, "Enter the date printed on the document before saving.");
+  if (isFutureDate(input.documentDate)) throw new ApiError(400, "The document's date can't be in the future.");
   const labels = await categoryLabels(supabase);
   const { data, error } = await supabase.rpc("confirm_document", {
     p_document_id: id,
