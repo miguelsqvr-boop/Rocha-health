@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Exam Requests" };
 
 /** Every exam request in the family, organised by date, specialty, doctor or type of exam. */
 export default async function FamilyExamRequestsPage({ searchParams }: { searchParams: Promise<ExamRequestParams> }) {
-  await requireSuperAdmin();
+  const viewer = await requireSuperAdmin();
   const params = await searchParams;
   const supabase = await createSupabaseServerClient();
   const [requests, members] = await Promise.all([examRequests(supabase), listMembers(supabase)]);
@@ -27,6 +27,7 @@ export default async function FamilyExamRequestsPage({ searchParams }: { searchP
         params={params}
         members={members.map((m) => ({ id: m.id, display_name: m.display_name, avatar_color: m.avatar_color }))}
         canEdit
+        canUpdate={() => !viewer.viewAs}
       />
     </>
   );

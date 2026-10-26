@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { memberPage } from "@/lib/member-page";
 import {
-  listPreventiveRules, memberDocuments, memberPreventiveCompletions, memberResults, memberTimeline, memberWellness, unreadNotifications,
+  examRequests, listPreventiveRules, memberDocuments, memberPreventiveCompletions, memberResults, memberTimeline, memberWellness, unreadNotifications,
 } from "@/lib/data/queries";
 import { LAB_DOMAINS, fitnessStatus, labDomainStatus, needsAttention, sleepStatus } from "@/lib/domain/health-summary";
 import { preventiveItems } from "@/lib/domain/preventive";
 import { formatDate } from "@/lib/format";
 import { Badge, Card, EmptyState, StatusPill } from "@/components/ui";
 import { NeedsAttention } from "@/components/member/NeedsAttention";
+import { ExamStatusBadge } from "@/components/client/ExamProgress";
+import { describeProgress } from "@/lib/domain/exams";
 
 export default async function MemberOverview({ params }: { params: Promise<{ memberId: string }> }) {
   const { subject, supabase, ownView } = await memberPage(params);
-  const [results, wellness, docs, rules, completions, timeline, notifications] = await Promise.all([
+  const [results, wellness, docs, rules, completions, timeline, notifications, requests] = await Promise.all([
     memberResults(supabase, subject.id),
     memberWellness(supabase, subject.id, 60),
     memberDocuments(supabase, subject.id),
@@ -19,7 +21,14 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
     memberPreventiveCompletions(supabase, subject.id),
     memberTimeline(supabase, subject.id, 8),
     ownView ? unreadNotifications(supabase, subject.id) : Promise.resolve([]),
+    examRequests(supabase, subject.id),
   ]);
+  // Requested exams not done yet: booked ones first (soonest first), then the oldest requests.
+  const openExams = requests
+    .flatMap((r) => r.requested_exams.filter((e) => e.status !== "done").map((e) => ({ ...e, request: r })))
+    .sort((a, b) =>
+      (a.status === "scheduled" ? 0 : 1) - (b.status === "scheduled" ? 0 : 1) ||
+      (a.status === "scheduled" ? (a.event_date ?? "").localeCompare(b.event_date ?? "") : (a.request.document_date ?? "").localeCompare(b.request.document_date ?? "")));
   const points = results.map((r) => ({
     biomarker_code: r.biomarker?.code ?? null, analyte_name: r.analyte_name, category: r.biomarker?.category ?? null,
     result_date: r.result_date, value: r.value_numeric, low: r.reference_low, high: r.reference_high,
@@ -44,6 +53,27 @@ export default async function MemberOverview({ params }: { params: Promise<{ mem
         </Card>
       )}
       {results.length > 0 && <NeedsAttention items={attention} memberId={subject.id} />}
+      {openExams.length > 0 && (
+        <Card
+          title={`Exams to do (${openExams.length})`}
+          action={<Link href={`${base}/exam-requests?status=to_do`} className="tap text-sm text-accent">Exam requests</Link>}
+        >
+          <ul className="divide-y divide-border text-sm">
+            {openExams.slice(0, 6).map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2">
+                <ExamStatusBadge status={e.status} />
+                <span className="text-ink">{e.exam_name}</span>
+                <span className="ml-auto text-xs text-ink-2">
+                  {e.status === "scheduled"
+                    ? describeProgress(e, { withStatus: false })
+                    : `Requested ${formatDate(e.request.document_date)}${e.request.doctor_name ? ` by ${e.request.doctor_name}` : ""}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {openExams.length > 6 && <p className="mt-2 text-xs text-ink-2">and {openExams.length - 6} more</p>}
+        </Card>
+      )}
       <Card title="Health areas">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {LAB_DOMAINS.map((d) => (

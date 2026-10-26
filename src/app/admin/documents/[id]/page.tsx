@@ -52,7 +52,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   const results = (await memberResults(supabase, doc.member_id!)).filter((r) => r.source_document_id === doc.id);
   const { data: exams } = await supabase
     .from("requested_exams")
-    .select("exam_name, exam_type, body_site")
+    .select("id, exam_name, exam_type, body_site")
     .eq("source_document_id", doc.id)
     .order("sort_order");
   return (

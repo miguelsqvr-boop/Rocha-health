@@ -18,7 +18,7 @@ import {
 import { LAB_DOMAINS, fitnessStatus, labDomainStatus, sleepStatus } from "@/lib/domain/health-summary";
 import { preventiveItems } from "@/lib/domain/preventive";
 import { documentTypeInfo } from "@/lib/domain/taxonomy";
-import { examTypeLabel, specialtyLabel } from "@/lib/domain/exams";
+import { describeProgress, examTypeLabel, specialtyLabel } from "@/lib/domain/exams";
 import { metricLabel } from "@/lib/domain/wellness";
 import { normalizeText } from "@/lib/domain/names";
 
@@ -124,7 +124,9 @@ export async function runAssistant(params: {
         if (typeof member === "string") return member;
         await audit(member, "documents");
         const [docs, requests] = await Promise.all([memberDocuments(supabase, member.id), examRequests(supabase, member.id)]);
-        const exams = new Map(requests.map((r) => [r.id, r.requested_exams.map((e) => ({ exam: e.exam_name, type: examTypeLabel(e.exam_type), body_site: e.body_site }))]));
+        const exams = new Map(requests.map((r) => [r.id, r.requested_exams.map((e) => ({
+          exam: e.exam_name, type: examTypeLabel(e.exam_type), body_site: e.body_site, progress: describeProgress(e), notes: e.notes,
+        }))]));
         return JSON.stringify({
           person: member.display_name,
           documents: docs.map((d) => ({

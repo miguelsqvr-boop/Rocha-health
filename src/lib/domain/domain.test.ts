@@ -4,7 +4,7 @@ import { buildBiomarkerIndex, computeFlag, effectiveRange, parseNumeric, resultC
 import {
   fitnessStatus, labDomainStatus, needsAttention, resultKey, seriesReference, sleepStatus, trendGroups, type LabResultLike, type ResultPoint,
 } from "./health-summary";
-import { doctorKey, filterExamRequests, groupExamRequests, type ExamRequestLike } from "./exams";
+import { describeProgress, doctorKey, examStatusCounts, filterExamRequests, groupExamRequests, type ExamRequestLike } from "./exams";
 import { addMonths, ageOn, preventiveItems, type PreventiveRule } from "./preventive";
 import { completeness } from "./completeness";
 import { accessSummary, canAccessMember } from "./permissions";
@@ -306,6 +306,20 @@ describe("exam requests", () => {
     expect(groupExamRequests(requests, "type").map((s) => [s.key, s.requests.map((r) => r.id)])).toEqual([
       ["blood_test", ["a"]], ["ultrasound", ["c"]], ["echocardiogram", ["a"]], ["holter", ["b"]], ["other", ["d"]],
     ]);
+  });
+  it("describes and counts progress, and filters by it", () => {
+    const base = { event_date: null, event_time: null, place: null, notes: null };
+    expect(describeProgress({ ...base, status: "to_do" })).toBe("Not done yet");
+    expect(describeProgress({ ...base, status: "done", event_date: "2026-11-12", place: "Hospital da Luz" })).toBe("Done · 12 Nov 2026 · Hospital da Luz");
+    expect(describeProgress({ ...base, status: "scheduled", event_date: "2026-11-14", event_time: "10:30:00", place: "CUF" })).toBe("Booked · 14 Nov 2026, 10:30 · CUF");
+    expect(describeProgress({ ...base, status: "done" })).toBe("Done");
+    const withStatus = [
+      { ...req("x", "2026-10-02", null, null, []), requested_exams: [{ exam_name: "A", exam_type: "mri", body_site: null, status: "done" }, { exam_name: "B", exam_type: "ecg", body_site: null, status: "to_do" }] },
+      { ...req("y", "2026-10-03", null, null, []), requested_exams: [{ exam_name: "C", exam_type: "mri", body_site: null, status: "scheduled" }] },
+    ];
+    expect(examStatusCounts(withStatus.flatMap((r) => r.requested_exams))).toEqual({ to_do: 1, scheduled: 1, done: 1 });
+    expect(filterExamRequests(withStatus, { status: "to_do" }).map((r) => r.id)).toEqual(["x"]);
+    expect(filterExamRequests(withStatus, { status: "scheduled" }).map((r) => r.id)).toEqual(["y"]);
   });
   it("filters by person, specialty, doctor and exam type", () => {
     expect(filterExamRequests(requests, { doctor: doctorKey("Ana Costa") }).map((r) => r.id)).toEqual(["a", "b"]);

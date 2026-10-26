@@ -3,6 +3,7 @@
 // Codes are stored in the database (documents.specialty,
 // requested_exams.exam_type); labels can change freely.
 
+import { formatDate } from "@/lib/format";
 import { normalizeText } from "./names";
 
 export const SPECIALTIES = {
@@ -95,10 +96,50 @@ export function doctorKey(name: string | null | undefined): string {
   return words.join(" ");
 }
 
+export const EXAM_STATUSES = {
+  to_do: "To do",
+  scheduled: "Booked",
+  done: "Done",
+} as const;
+
+export type ExamStatus = keyof typeof EXAM_STATUSES;
+export const EXAM_STATUS_CODES = Object.keys(EXAM_STATUSES) as ExamStatus[];
+
+export function isExamStatus(value: unknown): value is ExamStatus {
+  return typeof value === "string" && value in EXAM_STATUSES;
+}
+
 export interface RequestedExamLike {
   exam_name: string;
   exam_type: string;
   body_site: string | null;
+  status?: string;
+}
+
+export interface ExamProgressValue {
+  status: ExamStatus;
+  event_date: string | null;
+  event_time: string | null;
+  place: string | null;
+  notes: string | null;
+}
+
+/**
+ * "Done · 12 Nov 2026 · Hospital da Luz", "Booked · 14 Nov 2026, 10:30 · CUF".
+ * Without the status word where a badge already shows it.
+ */
+export function describeProgress(p: ExamProgressValue, options: { withStatus?: boolean } = {}): string {
+  if (p.status === "to_do") return "Not done yet";
+  const when = p.event_date ? `${formatDate(p.event_date)}${p.status === "scheduled" && p.event_time ? `, ${p.event_time.slice(0, 5)}` : ""}` : null;
+  const parts = [options.withStatus === false ? null : EXAM_STATUSES[p.status], when, p.place].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "No date or place yet";
+}
+
+/** How many of a list of exams are to do, booked and done. */
+export function examStatusCounts(exams: RequestedExamLike[]): Record<ExamStatus, number> {
+  const counts: Record<ExamStatus, number> = { to_do: 0, scheduled: 0, done: 0 };
+  for (const e of exams) counts[isExamStatus(e.status) ? e.status : "to_do"] += 1;
+  return counts;
 }
 
 export interface ExamRequestLike {
@@ -117,6 +158,8 @@ export interface ExamRequestFilters {
   specialty?: string;
   doctor?: string;
   type?: string;
+  /** Requests with at least one exam in this state. */
+  status?: string;
 }
 
 /** Requests that match every filter given (a doctor filter is a doctorKey). */
@@ -125,7 +168,8 @@ export function filterExamRequests<R extends ExamRequestLike>(requests: R[], fil
     (!filters.member || r.member_id === filters.member) &&
     (!filters.specialty || (r.specialty ?? "") === (filters.specialty === "none" ? "" : filters.specialty)) &&
     (!filters.doctor || doctorKey(r.doctor_name) === (filters.doctor === "none" ? "" : filters.doctor)) &&
-    (!filters.type || r.requested_exams.some((e) => e.exam_type === filters.type)),
+    (!filters.type || r.requested_exams.some((e) => e.exam_type === filters.type)) &&
+    (!filters.status || r.requested_exams.some((e) => (e.status ?? "to_do") === filters.status)),
   );
 }
 
