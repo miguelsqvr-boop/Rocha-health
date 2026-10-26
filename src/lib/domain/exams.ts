@@ -210,3 +210,71 @@ export function groupExamRequests<R extends ExamRequestLike>(requests: R[], by: 
   // Specialty and doctor: alphabetical, "not stated" last.
   return list.sort((a, b) => (a.key === "" ? 1 : b.key === "" ? -1 : a.label.localeCompare(b.label)));
 }
+
+// Which kinds of document can report each type of exam. Lab reports often
+// combine blood and urine; "other" exams can be reported by most documents.
+const RESULT_TYPES: Record<ExamType, readonly string[]> = {
+  blood_test: ["blood_test"],
+  urine_test: ["urine_test", "blood_test"],
+  other_lab: ["blood_test", "urine_test", "pathology", "genetic_test", "other"],
+  xray: ["xray"],
+  ultrasound: ["ultrasound"],
+  ct_scan: ["ct_scan"],
+  mri: ["mri"],
+  mammogram: ["mammogram", "ultrasound"],
+  dexa_scan: ["dexa_scan", "body_composition_scan"],
+  other_imaging: ["xray", "ultrasound", "ct_scan", "mri", "mammogram", "dexa_scan", "other"],
+  ecg: ["ecg"],
+  echocardiogram: ["echocardiogram"],
+  holter: ["holter"],
+  stress_test: ["stress_test"],
+  endoscopy: ["endoscopy", "surgery", "pathology"],
+  pathology: ["pathology", "surgery"],
+  pulmonary_function: ["fitness_test", "other"],
+  eye_exam: ["eye_exam"],
+  hearing_test: ["other"],
+  sleep_study: ["sleep_study"],
+  other: ["blood_test", "urine_test", "pathology", "genetic_test", "xray", "ultrasound", "ct_scan", "mri", "mammogram", "dexa_scan",
+    "ecg", "echocardiogram", "stress_test", "holter", "endoscopy", "surgery", "eye_exam", "sleep_study", "dental_record", "other"],
+};
+
+/** Whether a document of this type could be the result of this kind of exam. */
+export function canReport(documentType: string | null | undefined, examType: string): boolean {
+  return Boolean(documentType) && (RESULT_TYPES[isExamType(examType) ? examType : "other"] as readonly string[]).includes(documentType!);
+}
+
+export interface OpenExam {
+  id: string;
+  exam_type: string;
+  /** Date of the request it belongs to. */
+  requested_on: string | null;
+}
+
+export interface PossibleResult {
+  id: string;
+  document_type: string | null;
+  document_date: string | null;
+}
+
+const DAY = 86_400_000;
+const days = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / DAY;
+
+/**
+ * Exam–document pairs worth asking about: the document can report that kind
+ * of exam, and is dated from a week before the request (the request is
+ * sometimes written after the fact) to two years after it.
+ */
+export function possibleResultPairs(exams: OpenExam[], documents: PossibleResult[]): { examId: string; documentId: string }[] {
+  const pairs: { examId: string; documentId: string }[] = [];
+  for (const e of exams) {
+    for (const d of documents) {
+      if (!canReport(d.document_type, e.exam_type) || !d.document_date) continue;
+      if (e.requested_on) {
+        const gap = days(d.document_date) - days(e.requested_on);
+        if (gap < -7 || gap > 730) continue;
+      }
+      pairs.push({ examId: e.id, documentId: d.id });
+    }
+  }
+  return pairs;
+}

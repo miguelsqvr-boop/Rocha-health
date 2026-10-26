@@ -10,6 +10,7 @@ import {
   RESULT_COLUMNS,
   type DocumentRow,
   type ExamRequestRow,
+  type ResultDocumentRow,
   type MedicationRow,
   type MemberRow,
   type ResultRow,
@@ -66,6 +67,18 @@ export async function memberDocuments(supabase: ServerSupabase, memberId: string
   if (opts.filedOnly ?? true) query = query.eq("status", "filed");
   const { data } = await query.order("document_date", { ascending: false, nullsFirst: false });
   return (data ?? []) as DocumentRow[];
+}
+
+/** Filed documents that could report a requested exam (everything but requests), newest first. */
+export async function resultDocuments(supabase: ServerSupabase, memberId?: string): Promise<ResultDocumentRow[]> {
+  let query = supabase
+    .from("documents")
+    .select("id, member_id, title, document_type, document_date")
+    .eq("status", "filed")
+    .neq("document_type", "exam_request");
+  if (memberId) query = query.eq("member_id", memberId);
+  const { data } = await query.order("document_date", { ascending: false, nullsFirst: false }).limit(500);
+  return (data ?? []) as ResultDocumentRow[];
 }
 
 /**

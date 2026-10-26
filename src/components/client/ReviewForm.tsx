@@ -17,7 +17,8 @@ interface Props {
   review: DocumentReview;
   /** Member chosen in "Who is this for?" (null = let AI identify). */
   selectedMemberId: string | null;
-  onSaved: (summary: { memberName: string; title: string; outOfRange: number }) => void;
+  /** linked: requested exams this document was found to report (marked done). */
+  onSaved: (summary: { memberName: string; title: string; outOfRange: number; linked: string[] }) => void;
   onCancelled?: () => void;
 }
 
@@ -66,7 +67,7 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
     if (dateProblem) return setError(dateProblem);
     setSaving(true);
     setError(null);
-    const result = await callApi("POST", `/api/documents/${review.id}/confirm`, {
+    const result = await callApi<{ linked?: { exam_name: string }[] }>("POST", `/api/documents/${review.id}/confirm`, {
       memberId: targetId,
       acknowledgeIdentity: acknowledge,
       documentType,
@@ -81,7 +82,8 @@ export function ReviewForm({ review, selectedMemberId, onSaved, onCancelled }: P
     setSaving(false);
     if (result.ok) {
       const outOfRange = results.filter((r) => r.flag && r.flag !== "normal").length;
-      return onSaved({ memberName: nameOf(targetId)?.display_name ?? "", title, outOfRange });
+      const linked = (result.data.linked ?? []).map((l) => l.exam_name);
+      return onSaved({ memberName: nameOf(targetId)?.display_name ?? "", title, outOfRange, linked });
     }
     if (result.status === 409 && result.data.detail?.code === "identity_confirmation_required") {
       setError("Please confirm who this document belongs to before saving.");

@@ -1,5 +1,5 @@
 import { memberPage } from "@/lib/member-page";
-import { examRequests } from "@/lib/data/queries";
+import { examRequests, resultDocuments } from "@/lib/data/queries";
 import { ButtonLink, Card } from "@/components/ui";
 import { UploadWizard } from "@/components/client/UploadWizard";
 import { ExamRequestsBoard, type ExamRequestParams } from "@/components/member/ExamRequestsBoard";
@@ -14,7 +14,7 @@ export default async function ExamRequestsPage({
 }) {
   const { subject, supabase, viewer, canWrite, isSelf } = await memberPage(params);
   const { upload, ...filters } = await searchParams;
-  const requests = await examRequests(supabase, subject.id);
+  const [requests, results] = await Promise.all([examRequests(supabase, subject.id), resultDocuments(supabase, subject.id)]);
   const isAdmin = viewer.isSuperAdmin && !viewer.viewAs;
 
   return (
@@ -34,7 +34,7 @@ export default async function ExamRequestsPage({
           </p>
         )}
       </Card>
-      <ExamRequestsBoard requests={requests} basePath={`/m/${subject.id}/exam-requests`} params={filters} canEdit={isAdmin} canUpdate={() => canWrite} />
+      <ExamRequestsBoard requests={requests} basePath={`/m/${subject.id}/exam-requests`} params={filters} canEdit={isAdmin} canUpdate={() => canWrite} results={results} />
     </div>
   );
 }

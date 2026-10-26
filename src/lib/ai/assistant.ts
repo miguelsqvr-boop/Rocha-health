@@ -117,15 +117,20 @@ export async function runAssistant(params: {
     }),
     betaZodTool({
       name: "get_documents",
-      description: "Filed health documents for one person (type, date, provider, doctor), newest first. Exam requests include the exams requested.",
+      description: "Filed health documents for one person (type, date, provider, doctor), newest first. Exam requests include the exams requested, their progress and the document with each one's result.",
       inputSchema: z.object({ person: personField }),
       run: async ({ person }) => {
         const member = resolve(person);
         if (typeof member === "string") return member;
         await audit(member, "documents");
         const [docs, requests] = await Promise.all([memberDocuments(supabase, member.id), examRequests(supabase, member.id)]);
+        const titleOf = (id: string | null) => {
+          const d = id ? docs.find((x) => x.id === id) : undefined;
+          return d ? `${d.title ?? documentTypeInfo(d.document_type).label}, ${d.document_date ?? "undated"}` : null;
+        };
         const exams = new Map(requests.map((r) => [r.id, r.requested_exams.map((e) => ({
           exam: e.exam_name, type: examTypeLabel(e.exam_type), body_site: e.body_site, progress: describeProgress(e), notes: e.notes,
+          result_document: titleOf(e.result_document_id),
         }))]));
         return JSON.stringify({
           person: member.display_name,

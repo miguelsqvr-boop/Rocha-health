@@ -71,6 +71,17 @@ export interface RequestedExamRow {
   /** Where. */
   place: string | null;
   notes: string | null;
+  /** The document that reports this exam's result, when linked. */
+  result_document_id: string | null;
+}
+
+/** A filed document that could be the result of a requested exam. */
+export interface ResultDocumentRow {
+  id: string;
+  member_id: string;
+  title: string | null;
+  document_type: string | null;
+  document_date: string | null;
 }
 
 /** A filed exam request and the exams it asks for. */
@@ -86,7 +97,7 @@ export interface ExamRequestRow {
 }
 
 export const EXAM_REQUEST_COLUMNS =
-  "id, member_id, title, document_date, provider, doctor_name, specialty, requested_exams(id, exam_name, exam_type, body_site, sort_order, status, event_date, event_time, place, notes)";
+  "id, member_id, title, document_date, provider, doctor_name, specialty, requested_exams(id, exam_name, exam_type, body_site, sort_order, status, event_date, event_time, place, notes, result_document_id)";
 
 export interface ResultRow {
   id: string;
