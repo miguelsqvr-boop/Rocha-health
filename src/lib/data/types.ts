@@ -64,6 +64,13 @@ export interface RequestedExamRow {
   exam_type: string;
   body_site: string | null;
   sort_order: number;
+  status: "to_do" | "scheduled" | "done";
+  /** When: the appointment for a booked exam, the day a done exam was done. */
+  event_date: string | null;
+  event_time: string | null;
+  /** Where. */
+  place: string | null;
+  notes: string | null;
 }
 
 /** A filed exam request and the exams it asks for. */
@@ -79,7 +86,7 @@ export interface ExamRequestRow {
 }
 
 export const EXAM_REQUEST_COLUMNS =
-  "id, member_id, title, document_date, provider, doctor_name, specialty, requested_exams(id, exam_name, exam_type, body_site, sort_order)";
+  "id, member_id, title, document_date, provider, doctor_name, specialty, requested_exams(id, exam_name, exam_type, body_site, sort_order, status, event_date, event_time, place, notes)";
 
 export interface ResultRow {
   id: string;

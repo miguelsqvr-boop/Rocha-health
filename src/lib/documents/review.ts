@@ -20,6 +20,8 @@ export interface ReviewResult {
 }
 
 export interface ReviewRequestedExam {
+  /** Set for an exam already saved, so editing the list keeps its progress. */
+  id?: string;
   exam_name: string;
   exam_type: string;
   body_site: string | null;

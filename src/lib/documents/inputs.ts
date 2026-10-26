@@ -4,6 +4,7 @@ import { z } from "zod";
 import { EXAM_TYPE_CODES, SPECIALTY_CODES } from "@/lib/domain/exams";
 
 export const RequestedExamInput = z.object({
+  id: z.string().uuid().optional(),
   exam_name: z.string().trim().min(1).max(200),
   exam_type: z.enum(EXAM_TYPE_CODES as [string, ...string[]]),
   body_site: z.string().trim().max(120).nullable(),

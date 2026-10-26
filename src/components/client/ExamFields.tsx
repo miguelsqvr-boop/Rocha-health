@@ -86,6 +86,6 @@ export function ExamListEditor({ exams, onChange }: { exams: ReviewRequestedExam
 /** Exams as the API expects them: named ones only, trimmed. */
 export function cleanExams(exams: ReviewRequestedExam[]): ReviewRequestedExam[] {
   return exams
-    .map((e) => ({ exam_name: e.exam_name.trim(), exam_type: e.exam_type, body_site: e.body_site?.trim() || null }))
+    .map((e) => ({ ...(e.id ? { id: e.id } : {}), exam_name: e.exam_name.trim(), exam_type: e.exam_type, body_site: e.body_site?.trim() || null }))
     .filter((e) => e.exam_name);
 }

@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { ExamRequestRow } from "@/lib/data/types";
 import {
   doctorKey,
+  examStatusCounts,
   examTypeLabel,
+  EXAM_STATUS_CODES,
+  EXAM_STATUSES,
   EXAM_TYPE_CODES,
   filterExamRequests,
   groupExamRequests,
@@ -12,6 +15,7 @@ import {
 } from "@/lib/domain/exams";
 import { formatDate } from "@/lib/format";
 import { Avatar, Badge, Card, EmptyState, cx } from "@/components/ui";
+import { ExamProgressRow, MarkAllDone } from "@/components/client/ExamProgress";
 
 export interface ExamRequestParams extends ExamRequestFilters {
   by?: string;
@@ -29,9 +33,10 @@ const chip = (active: boolean) =>
 
 /**
  * Exam requests, sorted by date, specialty, doctor or type of exam, with
- * filters for each. Everything comes from the URL (?by=, ?specialty=,
- * ?doctor=, ?type=, ?member=), so a view can be bookmarked or shared within
- * the family. The rows were read through RLS by the page.
+ * filters for each and for progress (to do, booked, done). Everything comes
+ * from the URL (?by=, ?specialty=, ?doctor=, ?type=, ?status=, ?member=), so
+ * a view can be bookmarked. The rows were read through RLS by the page. Each
+ * exam shows whether it was done, when and where, and can be updated in place.
  */
 export function ExamRequestsBoard(props: {
   requests: ExamRequestRow[];
@@ -41,13 +46,16 @@ export function ExamRequestsBoard(props: {
   members?: { id: string; display_name: string; avatar_color: string | null }[];
   /** Super Admin: link each request to its edit page. */
   canEdit: boolean;
+  /** Who may record progress, by member id (the person and the Super Admin). */
+  canUpdate: (memberId: string) => boolean;
 }) {
   const { requests, basePath, params, members } = props;
   const by: ExamRequestGrouping = GROUPINGS.some((g) => g.by === params.by) ? (params.by as ExamRequestGrouping) : "date";
-  const filters: ExamRequestFilters = { member: params.member, specialty: params.specialty, doctor: params.doctor, type: params.type };
+  const filters: ExamRequestFilters = { member: params.member, specialty: params.specialty, doctor: params.doctor, type: params.type, status: params.status };
   const shown = filterExamRequests(requests, filters);
   const sections = groupExamRequests(shown, by);
-  const filtered = Boolean(filters.member || filters.specialty || filters.doctor || filters.type);
+  const filtered = Boolean(filters.member || filters.specialty || filters.doctor || filters.type || filters.status);
+  const clearFilters = { member: undefined, specialty: undefined, doctor: undefined, type: undefined, status: undefined };
 
   const href = (patch: Partial<ExamRequestParams>) => {
     const next = { ...params, ...patch };
@@ -68,6 +76,12 @@ export function ExamRequestsBoard(props: {
   const types = EXAM_TYPE_CODES.filter((code) => requests.some((r) => r.requested_exams.some((e) => e.exam_type === code)));
   const names = new Map(members?.map((m) => [m.id, m]) ?? []);
   const examCount = shown.reduce((n, r) => n + r.requested_exams.length, 0);
+  const progress = examStatusCounts(shown.flatMap((r) => r.requested_exams));
+  // Places already used, so "where" is usually one tap.
+  const places = [...new Set([
+    ...requests.flatMap((r) => r.requested_exams.map((e) => e.place)),
+    ...requests.map((r) => r.provider),
+  ].filter((p): p is string => Boolean(p?.trim())))].sort((a, b) => a.localeCompare(b));
 
   if (requests.length === 0) {
     return (
@@ -82,9 +96,17 @@ export function ExamRequestsBoard(props: {
     <div className="space-y-4">
       <div className="space-y-3 rounded-2xl border border-border bg-surface p-5">
         <p className="text-sm text-ink-2">
-          {shown.length === 1 ? "1 request" : `${shown.length} requests`} · {examCount === 1 ? "1 exam" : `${examCount} exams`}
-          {filtered && <> · <Link href={href({ member: undefined, specialty: undefined, doctor: undefined, type: undefined })} className="text-accent">Show all</Link></>}
+          {shown.length === 1 ? "1 request" : `${shown.length} requests`} · {examCount === 1 ? "1 exam" : `${examCount} exams`}:{" "}
+          <strong className="font-medium text-ink">{progress.to_do} to do</strong>, {progress.scheduled} booked, {progress.done} done
+          {filtered && <> · <Link href={href(clearFilters)} className="text-accent">Show all</Link></>}
         </p>
+        <FilterRow label="Progress">
+          {EXAM_STATUS_CODES.map((s) => (
+            <Link key={s} href={toggle("status", s)} className={chip(filters.status === s)}>
+              {EXAM_STATUSES[s]} <span className="ml-1 text-muted">{examStatusCounts(requests.flatMap((r) => r.requested_exams))[s]}</span>
+            </Link>
+          ))}
+        </FilterRow>
         <FilterRow label="Organise by">
           {GROUPINGS.map((g) => <Link key={g.by} href={href({ by: g.by })} className={chip(by === g.by)}>{g.label}</Link>)}
         </FilterRow>
@@ -110,7 +132,7 @@ export function ExamRequestsBoard(props: {
 
       {sections.length === 0 ? (
         <EmptyState title="No requests match these filters">
-          <Link href={href({ member: undefined, specialty: undefined, doctor: undefined, type: undefined })} className="text-accent">Show all requests</Link>
+          <Link href={href(clearFilters)} className="text-accent">Show all requests</Link>
         </EmptyState>
       ) : (
         sections.map((section) => (
@@ -121,6 +143,9 @@ export function ExamRequestsBoard(props: {
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {section.requests.map((r) => {
                 const person = names.get(r.member_id);
+                const counts = examStatusCounts(r.requested_exams);
+                const total = r.requested_exams.length;
+                const canUpdate = props.canUpdate(r.member_id);
                 return (
                   <Card key={r.id}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -134,6 +159,13 @@ export function ExamRequestsBoard(props: {
                           {r.doctor_name ?? "Doctor not stated"} · {specialtyLabel(r.specialty)}
                           {r.provider && ` · ${r.provider}`}
                         </p>
+                        {total > 0 && (
+                          <p className="mt-1">
+                            {counts.done === total
+                              ? <Badge tone="good"><span aria-hidden>✓</span>All done</Badge>
+                              : <Badge tone={counts.to_do > 0 ? "warning" : "accent"}>{counts.done} of {total} done{counts.scheduled > 0 && ` · ${counts.scheduled} booked`}</Badge>}
+                          </p>
+                        )}
                       </div>
                       <p className="flex gap-3 text-sm">
                         <a href={`/api/documents/${r.id}/file`} target="_blank" rel="noreferrer" className="tap text-accent">View</a>
@@ -144,15 +176,24 @@ export function ExamRequestsBoard(props: {
                     {r.requested_exams.length === 0 ? (
                       <p className="mt-3 text-sm text-ink-2">No exams were listed for this request.</p>
                     ) : (
-                      <ul className="mt-3 divide-y divide-border text-sm">
-                        {r.requested_exams.map((e) => (
-                          <li key={e.id} className={cx("flex flex-wrap items-center gap-2 py-1.5", filters.type && e.exam_type !== filters.type && "opacity-60")}>
-                            <span className="text-ink">{e.exam_name}</span>
-                            {e.body_site && <span className="text-ink-2">· {e.body_site}</span>}
-                            <span className="ml-auto"><Badge tone={filters.type === e.exam_type ? "accent" : "neutral"}>{examTypeLabel(e.exam_type)}</Badge></span>
-                          </li>
-                        ))}
-                      </ul>
+                      <>
+                        <ul className="mt-3 divide-y divide-border text-sm">
+                          {r.requested_exams.map((e) => (
+                            <ExamProgressRow
+                              key={e.id}
+                              examId={e.id}
+                              name={e.exam_name}
+                              typeLabel={examTypeLabel(e.exam_type)}
+                              bodySite={e.body_site}
+                              value={{ status: e.status, event_date: e.event_date, event_time: e.event_time, place: e.place, notes: e.notes }}
+                              places={places}
+                              canUpdate={canUpdate}
+                              dimmed={Boolean((filters.type && e.exam_type !== filters.type) || (filters.status && e.status !== filters.status))}
+                            />
+                          ))}
+                        </ul>
+                        {canUpdate && <MarkAllDone examIds={r.requested_exams.filter((e) => e.status !== "done").map((e) => e.id)} places={places} />}
+                      </>
                     )}
                   </Card>
                 );

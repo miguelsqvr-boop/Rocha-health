@@ -34,7 +34,7 @@ export default async function ExamRequestsPage({
           </p>
         )}
       </Card>
-      <ExamRequestsBoard requests={requests} basePath={`/m/${subject.id}/exam-requests`} params={filters} canEdit={isAdmin} />
+      <ExamRequestsBoard requests={requests} basePath={`/m/${subject.id}/exam-requests`} params={filters} canEdit={isAdmin} canUpdate={() => canWrite} />
     </div>
   );
 }
