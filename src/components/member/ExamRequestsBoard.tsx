@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ExamRequestRow } from "@/lib/data/types";
+import type { ExamRequestRow, ResultDocumentRow } from "@/lib/data/types";
 import {
   doctorKey,
   examStatusCounts,
@@ -15,7 +15,8 @@ import {
 } from "@/lib/domain/exams";
 import { formatDate } from "@/lib/format";
 import { Avatar, Badge, Card, EmptyState, cx } from "@/components/ui";
-import { ExamProgressRow, MarkAllDone } from "@/components/client/ExamProgress";
+import { ExamProgressRow, FindResults, MarkAllDone, type ResultChoice } from "@/components/client/ExamProgress";
+import { documentTypeInfo } from "@/lib/domain/taxonomy";
 
 export interface ExamRequestParams extends ExamRequestFilters {
   by?: string;
@@ -48,6 +49,8 @@ export function ExamRequestsBoard(props: {
   canEdit: boolean;
   /** Who may record progress, by member id (the person and the Super Admin). */
   canUpdate: (memberId: string) => boolean;
+  /** Filed documents that can be results (to show and choose linked results). */
+  results: ResultDocumentRow[];
 }) {
   const { requests, basePath, params, members } = props;
   const by: ExamRequestGrouping = GROUPINGS.some((g) => g.by === params.by) ? (params.by as ExamRequestGrouping) : "date";
@@ -75,6 +78,13 @@ export function ExamRequestsBoard(props: {
     .sort((a, b) => (a.key === "none" ? 1 : b.key === "none" ? -1 : a.label.localeCompare(b.label)));
   const types = EXAM_TYPE_CODES.filter((code) => requests.some((r) => r.requested_exams.some((e) => e.exam_type === code)));
   const names = new Map(members?.map((m) => [m.id, m]) ?? []);
+  const choice = (d: ResultDocumentRow): ResultChoice => ({ id: d.id, label: d.title ?? documentTypeInfo(d.document_type).label, document_date: d.document_date });
+  const resultById = new Map(props.results.map((d) => [d.id, choice(d)]));
+  // A request's possible results: the person's documents from a week before it on.
+  const choicesFor = (r: ExamRequestRow) => {
+    const from = r.document_date ? new Date(Date.parse(`${r.document_date}T00:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10) : "";
+    return props.results.filter((d) => d.member_id === r.member_id && (!from || (d.document_date ?? "") >= from)).map(choice);
+  };
   const examCount = shown.reduce((n, r) => n + r.requested_exams.length, 0);
   const progress = examStatusCounts(shown.flatMap((r) => r.requested_exams));
   // Places already used, so "where" is usually one tap.
@@ -146,6 +156,8 @@ export function ExamRequestsBoard(props: {
                 const counts = examStatusCounts(r.requested_exams);
                 const total = r.requested_exams.length;
                 const canUpdate = props.canUpdate(r.member_id);
+                const choices = choicesFor(r);
+                const open = r.requested_exams.filter((e) => e.status !== "done");
                 return (
                   <Card key={r.id}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -189,10 +201,18 @@ export function ExamRequestsBoard(props: {
                               places={places}
                               canUpdate={canUpdate}
                               dimmed={Boolean((filters.type && e.exam_type !== filters.type) || (filters.status && e.status !== filters.status))}
+                              resultDocumentId={e.result_document_id}
+                              result={e.result_document_id ? (resultById.get(e.result_document_id) ?? null) : null}
+                              resultChoices={choices}
                             />
                           ))}
                         </ul>
-                        {canUpdate && <MarkAllDone examIds={r.requested_exams.filter((e) => e.status !== "done").map((e) => e.id)} places={places} />}
+                        {canUpdate && open.length > 0 && (
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <FindResults requestId={r.id} />
+                            <MarkAllDone examIds={open.map((e) => e.id)} places={places} />
+                          </div>
+                        )}
                       </>
                     )}
                   </Card>

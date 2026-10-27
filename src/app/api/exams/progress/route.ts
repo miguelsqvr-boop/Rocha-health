@@ -11,6 +11,8 @@ const ProgressInput = z.object({
   place: z.string().trim().max(120).nullable(),
   // Left out: the note stays as it is. Empty: cleared.
   notes: z.string().trim().max(500).nullable().optional(),
+  // Left out: the linked result stays as it is. Null: unlinked.
+  resultDocumentId: z.string().uuid().nullable().optional(),
 });
 
 /**
@@ -32,5 +34,14 @@ export const POST = route({ mutates: true }, async ({ supabase }, request: Reque
     p_notes: input.notes === undefined ? null : (input.notes ?? ""),
   });
   throwIfDbError(error);
+  // A result only goes with "done" (the database drops it otherwise).
+  if (input.resultDocumentId !== undefined && input.status === "done") {
+    const { error: linkError } = await supabase.rpc("link_exam_results", {
+      p_exam_ids: input.examIds,
+      p_document_id: input.resultDocumentId,
+      p_automatic: false,
+    });
+    throwIfDbError(linkError);
+  }
   return json({ updated: data });
 });

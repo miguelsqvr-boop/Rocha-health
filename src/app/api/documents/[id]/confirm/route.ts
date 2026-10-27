@@ -3,6 +3,7 @@ import { ApiError, json, readJson, route, throwIfDbError } from "@/lib/api";
 import { categoryLabels } from "@/lib/data/queries";
 import { buildFilingPath, categoryForType, DOCUMENT_TYPE_CODES } from "@/lib/domain/taxonomy";
 import { DoctorInput, RequestedExamInput } from "@/lib/documents/inputs";
+import { linkExamResults } from "@/lib/documents/exam-results";
 import { isFutureDate } from "@/lib/validation";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -33,10 +34,14 @@ const ConfirmInput = z.object({
   requestedExams: z.array(RequestedExamInput).max(100).optional(),
 });
 
+export const maxDuration = 60;
+
 /**
  * Step 7–8: the uploader confirms who the document belongs to. The database
  * re-checks permission and refuses (409) to file under a member whose identity
- * check did not match unless acknowledgeIdentity is true.
+ * check did not match unless acknowledgeIdentity is true. Once filed, a
+ * result is linked to the person's open exam requests it reports, and a new
+ * request to results already on file.
  */
 export const POST = route({ mutates: true }, async ({ supabase }, request: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
@@ -62,5 +67,16 @@ export const POST = route({ mutates: true }, async ({ supabase }, request: Reque
     p_requested_exams: input.documentType === "exam_request" ? (input.requestedExams ?? []) : [],
   });
   throwIfDbError(error);
-  return json(data);
+  const linked = await linkExamResults(
+    supabase,
+    input.documentType === "exam_request"
+      ? { memberId: input.memberId, examIds: await requestExamIds(supabase, id) }
+      : { memberId: input.memberId, documentIds: [id] },
+  );
+  return json({ ...(data as object), linked });
 });
+
+async function requestExamIds(supabase: Parameters<typeof linkExamResults>[0], documentId: string): Promise<string[]> {
+  const { data } = await supabase.from("requested_exams").select("id").eq("source_document_id", documentId);
+  return (data ?? []).map((e) => e.id);
+}

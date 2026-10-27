@@ -4,7 +4,9 @@ import { buildBiomarkerIndex, computeFlag, effectiveRange, parseNumeric, resultC
 import {
   fitnessStatus, labDomainStatus, needsAttention, resultKey, seriesReference, sleepStatus, trendGroups, type LabResultLike, type ResultPoint,
 } from "./health-summary";
-import { describeProgress, doctorKey, examStatusCounts, filterExamRequests, groupExamRequests, type ExamRequestLike } from "./exams";
+import {
+  canReport, describeProgress, doctorKey, examStatusCounts, filterExamRequests, groupExamRequests, possibleResultPairs, type ExamRequestLike,
+} from "./exams";
 import { addMonths, ageOn, preventiveItems, type PreventiveRule } from "./preventive";
 import { completeness } from "./completeness";
 import { accessSummary, canAccessMember } from "./permissions";
@@ -320,6 +322,32 @@ describe("exam requests", () => {
     expect(examStatusCounts(withStatus.flatMap((r) => r.requested_exams))).toEqual({ to_do: 1, scheduled: 1, done: 1 });
     expect(filterExamRequests(withStatus, { status: "to_do" }).map((r) => r.id)).toEqual(["x"]);
     expect(filterExamRequests(withStatus, { status: "scheduled" }).map((r) => r.id)).toEqual(["y"]);
+  });
+  it("knows which documents can report which exams", () => {
+    expect(canReport("ultrasound", "ultrasound")).toBe(true);
+    expect(canReport("blood_test", "urine_test")).toBe(true);
+    expect(canReport("ct_scan", "ultrasound")).toBe(false);
+    expect(canReport("exam_request", "other")).toBe(false);
+    expect(canReport(null, "blood_test")).toBe(false);
+  });
+  it("pairs open exams with documents of a fitting type and date", () => {
+    const exams = [
+      { id: "us", exam_type: "ultrasound", requested_on: "2025-12-16" },
+      { id: "ct", exam_type: "ct_scan", requested_on: "2026-09-09" },
+    ];
+    const docs = [
+      { id: "us-before", document_type: "ultrasound", document_date: "2025-11-01" },
+      { id: "us-ok", document_type: "ultrasound", document_date: "2026-01-20" },
+      { id: "us-week-before", document_type: "ultrasound", document_date: "2025-12-12" },
+      { id: "ct-ok", document_type: "ct_scan", document_date: "2026-10-01" },
+      { id: "us-late", document_type: "ultrasound", document_date: "2028-06-01" },
+      { id: "blood", document_type: "blood_test", document_date: "2026-01-20" },
+    ];
+    expect(possibleResultPairs(exams, docs)).toEqual([
+      { examId: "us", documentId: "us-ok" },
+      { examId: "us", documentId: "us-week-before" },
+      { examId: "ct", documentId: "ct-ok" },
+    ]);
   });
   it("filters by person, specialty, doctor and exam type", () => {
     expect(filterExamRequests(requests, { doctor: doctorKey("Ana Costa") }).map((r) => r.id)).toEqual(["a", "b"]);
